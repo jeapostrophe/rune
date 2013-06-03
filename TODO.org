@@ -1,0 +1,76 @@
+* Rune
+
+Rune is an "operating system" and user interface. It performs the
+jobs of:
+- emacs
+- screen
+- xterm
+- zsh
+- conkeror
+- irsii
+- google-chrome
+- xmonad
+- xmobar
+- dmenu
+- miro
+- workrave
+- gmail
+- google calendar
+- newsblur
+- twitter reader
+- eog
+- evince
+- ps
+- pkill
+- crond
+
+It is generalized over a user interface, so I can easily port it from
+the console, framebuffer, X11, Wayland, etc. It is designed to have a
+totally functional core so its state can be easily saved and reloaded
+to exactly the same environment.
+
+It has the concepts of a process, a Web view, a canvas, a buffer, a
+frame, a window, and a file.
+
+A lot of what it does is based on the concept of overlays... where a
+specific chunk of space (characters or pixels) has added information
+about it.
+
+This information might affect rendering (color) or the behavior of
+other commands (so that F1 could look at the 'help overlays of where
+it is).
+
+Modes would specify parsers and lexers that add overlay information to
+the content they are reading (or to other content.) For instance, the
+spell-check mode would add a 'spelled-wrong overlay given that
+another mode had added the 'plain-text overlay. For instance, the
+compile mode might look for messages of the form "file:line: message"
+and add overlay to that file. For efficiency, we make the programmer
+specify things about parser/lexer behavior, such that the entire file
+doesn't need to be re-lexed.
+
+Special Rune programs can produce pre-overlayed text.
+
+Commands could search their body for overlays of a specific type
+(such as "how many words are spelled wrong?")
+
+* Tasks
+** TODO Think about emacs design
+   http://en.wikipedia.org/wiki/Emacs
+** TODO Think about Yi design
+   http://yi-editor.blogspot.com/
+
+   http://yi-editor.blogspot.com/2009/03/lazy-and-incremental-parsing-paper.html
+
+   http://yi-editor.blogspot.com/2008/11/incremental-parsing-in-yi.html
+** TODO terminal
+   Make every command invocation create a new set of buffers that is
+   "spliced" into the terminal buffer, so that you get a record the
+   entire interaction that can be redisplayed in the future (like
+   always "tee"ing)
+** TODO automatically increase font-size so that 80chars fit width-wise and no more
+** TODO embed chromium
+   CEF3 seems to do it
+
+   big challenge might be doing off-screen rendering and then
+   figuring out where an object is to overlay on it?
