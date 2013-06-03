@@ -63,6 +63,25 @@ Commands could search their body for overlays of a specific type
    http://yi-editor.blogspot.com/2009/03/lazy-and-incremental-parsing-paper.html
 
    http://yi-editor.blogspot.com/2008/11/incremental-parsing-in-yi.html
+** TODO plan structure
+   like a microkernel...
+   - state manager
+   - rendering manager (rendering individual windows/frames)
+   - gui manager (creating X/etc windows)
+
+   Each "mode" would get its own process and send/receive messages
+   about changes, overlays, etc
+
+   Each "window" would get its own process and send/receive messages
+   about cursor movement, key inputs, etc that may send it in turn
+   to...
+
+   Each "buffer" would get its own process to facilitate safe file
+   modification
+** TODO what to do first?
+   basic editor -> buffers/windows/frames -> multiple modes ->
+   terminal -> shell -> org-mode -> canvas buffers (eog, evince) ->
+   web buffers
 ** TODO terminal
    Make every command invocation create a new set of buffers that is
    "spliced" into the terminal buffer, so that you get a record the
