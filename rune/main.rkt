@@ -3,14 +3,24 @@
          racket/match
          racket/async-channel)
 
-(struct buffer (name content))
-(struct window (cursor buffer))
+(struct buffer ())
+(struct buffer:file (path content))
+
+(struct view (cursor buffer))
 
 (struct layout ())
-(struct wlayout layout (w))
-(struct hlayout layout (left right))
-(struct vlayout layout (top bottom))
-(struct frame (focus layout))
+(struct vlayout layout (v))
+(struct llayout layout (style children))
+
+(struct rstate (buffers views layout focus))
+(define-syntax-rule (define-rstate-lookup rstate-view rstate-views err)
+  (define (rstate-view rs vid)
+    (hash-ref (rstate-views rs) vid
+              (λ ()
+                (error 'rstate-view err vid)))))
+
+(define-rstate-lookup rstate-view rstate-views "Unknown view ~e")
+(define-rstate-lookup rstate-buffer rstate-buffers "Unknown buffer ~e")
 
 (module rune/gui/racket racket/base
   (require racket/gui/base
@@ -51,38 +61,34 @@
     (set-box! (gframe-pb gf) f)
     (send (gframe-c gf) refresh-now))
 
+  (define gui-sync yield)
+
   (provide gui-frame
+           gui-sync
            set-gui-frame-label!
            gui-frame-refresh!))
 
 (require (submod "." rune/gui/racket))
 
-(define (layout-follow-path p l)
-  (match* (p l)
-    [((list) (? wlayout? l))
-     (wlayout-w l)]
-    [((list-rest 'left p) (? hlayout? l))
-     (layout-follow-path p (hlayout-left l))]
-    [((list-rest 'right p) (? hlayout? l))
-     (layout-follow-path p (hlayout-right l))]
-    [((list-rest 'top p) (? vlayout? l))
-     (layout-follow-path p (vlayout-top l))]
-    [((list-rest 'bottom p) (? vlayout? l))
-     (layout-follow-path p (vlayout-bottom l))]))
+(define layout-focused-view
+  (match-lambda*
+   [(list (list) (vlayout v))
+    v]
+   [(list (list-rest this more) (llayout _ cs))
+    (layout-focused-view more (list-ref cs this))]))
 
-(define (frame-focused-window f)
-  (layout-follow-path (frame-focus f) (frame-layout f)))
-
-(struct iframe (f gf ch))
-
-(define (layout-render! w h dc l)
-  (void))
-
-(define (iframe-render! if)
-  (define f (iframe-f if))
-  (define gf (iframe-gf if))
+(define (rstate-render! gf rs)
   (local-require racket/draw
                  racket/class)
+
+  (let ()
+    (define vid (layout-focused-view (rstate-focus rs) (rstate-layout rs)))
+    (define v (rstate-view rs vid))
+    (define bid (view-buffer v))
+    (define b (rstate-buffer rs bid))
+    ;; xxx make an overlay
+    (set-gui-frame-label! gf (buffer:file-path b)))
+
   (gui-frame-refresh!
    gf
    (λ (w h dc)
@@ -91,30 +97,32 @@
      (send dc set-text-foreground "black")
      (send dc set-text-mode 'transparent)
 
-     (send dc draw-text "Hi!!!" 0 0)
-
-     (layout-render! w h dc (frame-layout f))))
+     (send dc draw-text "Hi!!!" 0 0)))
   (void))
 
-(define (start fs)
-  (define ifs
-    (for/list ([f (in-list fs)])
-      ;; xxx abstract into function
-      (define ch (make-async-channel))
-      (define gf (gui-frame ch))
-      (set-gui-frame-label! gf (buffer-name (window-buffer (frame-focused-window f))))
-      (define if (iframe f gf ch))
-      (iframe-render! if)
-      if))
+(define (start rs)
+  (define ch (make-async-channel))
+  (define gf (gui-frame ch))
+  (rstate-render! gf rs)
+  (rstate-loop rstate-loop ch gf rs))
 
-  (void))
+;; We take loop as an argument so we can write tests that don't go
+;; forever. Cute, huh?
+(define (rstate-loop loop ch gf rs)
+  (define (iloop rs)
+    (loop loop ch gf rs))
+  (gui-sync
+   (handle-evt ch
+               (λ (ke)
+                 (eprintf "Ignored ~a\n" ke)
+                 (iloop rs)))))
 
 (module+ main
   (start
-   (list
-    (frame '()
-           (wlayout
-            (window
-             0
-             (buffer "../TODO.org"
-                     (file->string "../TODO.org"))))))))
+   (rstate (hasheq 0
+                   (buffer:file "../TODO.org"
+                                (file->string "../TODO.org")))
+           (hasheq 0
+                   (view 0 0))
+           (vlayout 0)
+           '())))
