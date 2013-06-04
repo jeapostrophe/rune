@@ -9,9 +9,9 @@
 (define (path->buffer p)
   (buffer:file p (file->lines p)))
 (define (buffer-max-row b)
-  (sub1 (length (buffer:file-content b))))
+  (max 0 (sub1 (length (buffer:file-content b)))))
 (define (buffer-max-col b r)
-  (sub1 (string-length (list-ref (buffer:file-content b) r))))
+  (max 0 (sub1 (string-length (list-ref (buffer:file-content b) r)))))
 
 (struct cursor (row col))
 
@@ -21,6 +21,7 @@
   (match-define (cursor r c) a-c)
   (define nr (clamp 0 (+ r dr) (buffer-max-row b)))
   (define nc
+    ;; xxx switch rows rather than clamp
     (clamp 0 (+ c dc) (buffer-max-col b nr)))
   (cursor nr nc))
 
@@ -98,47 +99,6 @@
 (require racket/draw
          racket/class)
 
-(define (view-render! w h dc rs focused? v)
-  (define bid (view-buffer v))
-  (define b (rstate-buffer rs bid))
-  (define-values (char-width char-height)
-    (let-values ([(width height xtra-below xtra-above)
-                  (send dc get-text-extent " ")])
-      (values width (- height (+ xtra-below xtra-above)))))
-  (for ([l (in-list (buffer:file-content b))]
-        [row (in-naturals)])
-    (for ([c (in-string l)]
-          [col (in-naturals)])
-      (send dc draw-text (string c) (* col char-width) (* row char-height))))
-
-  (let ()
-    (match-define (cursor row col) (view-cursor v))
-    (define cursor-outline-c (make-object color% 0 0 255 1.0))
-    (define cursor-fill-c/focus (make-object color% 0 0 255 0.5))
-    (define cursor-fill-c/unfocus (make-object color% 0 0 255 0.0))
-    (cond
-      ;; xxx hard to see cursor
-      [(and #f (and focused? (zero? (modulo (current-seconds) 2))))
-       (send dc set-brush cursor-fill-c/unfocus 'transparent)
-       (send dc set-pen cursor-fill-c/unfocus 1 'transparent)]
-      [else
-       (send dc set-brush (if focused?
-                            cursor-fill-c/focus
-                            cursor-fill-c/unfocus)
-             'solid)
-       (send dc set-pen cursor-outline-c 1 'solid)])
-
-    (send dc draw-rectangle
-          (* col char-width) (* row char-height)
-          char-width char-height)))
-
-(define (layout-render! w h dc rs focused-vid l)
-  (match l
-    [(vlayout vid)
-     ;; xxx clip to wxh?
-     (view-render! w h dc rs (eq? focused-vid vid)
-                   (rstate-view rs vid))]))
-
 (define (rstate-render! gf rs)
   (define focused-vid
     (let ()
@@ -150,16 +110,93 @@
       (set-gui-frame-label! gf (buffer:file-path b))
       vid))
 
-  (gui-frame-refresh!
-   gf
-   (λ (w h dc)
-     ;; xxx configurable
-     (send dc clear)
-     (send dc set-font (make-font #:family 'modern))
-     (send dc set-text-foreground "black")
-     (send dc set-text-mode 'transparent)
+  (define cursor-outline-c (make-object color% 0 0 255 1.0))
+  (define frame-outline-c cursor-outline-c)
+  (define frame-outline-c/dull (make-object color% 127 127 127 0.5))
+  (define cursor-fill-c/focus (make-object color% 0 0 255 0.5))
+  (define cursor-fill-c/unfocus (make-object color% 0 0 255 0.0))
 
-     (layout-render! w h dc rs focused-vid (rstate-layout rs))))
+  (define (draw! w h dc)
+    ;; xxx configurable
+    (send dc clear)
+    (send dc set-font (make-font #:family 'modern))
+    (send dc set-text-foreground "black")
+    (send dc set-text-mode 'transparent)
+
+    (define-values (char-width char-height)
+      (let-values ([(width height xtra-below xtra-above)
+                    (send dc get-text-extent " ")])
+        (values width height)))
+
+    (define margin% 0.5)
+    (define hmargin (* char-width margin%))
+    (define vmargin (* char-height margin%))
+
+    (define (draw-layout! w h l)
+      (define old (send dc get-clipping-region))
+      (send dc set-clipping-rect
+            0 0 w h)
+      (match l
+        [(vlayout vid)
+
+         ;; xxx this notion of focused? is weird, because it is
+         ;; defined as a path, but then things that weren't on that
+         ;; path are focused too.
+         ;;
+         ;; maybe i should just merge vlayout and view?
+
+         (define focused? (eq? focused-vid vid))
+         (send dc set-pen
+               (if focused?
+                 frame-outline-c
+                 frame-outline-c/dull)
+               1 'solid)
+         (send dc set-brush cursor-outline-c 'transparent)
+         (send dc draw-rectangle 0 0 w h)
+         (define txm (send dc get-transformation))
+         (send dc translate hmargin vmargin)
+         (draw-view! focused? (rstate-view rs vid))
+         (send dc set-transformation txm)]
+        [(llayout 'horizontal ls)
+         (define lw (/ w (length ls)))
+         (for ([l (in-list ls)]
+               [i (in-naturals)])
+           (define txm (send dc get-transformation))
+           (send dc translate (* i lw) 0)
+           (draw-layout! lw h l)
+           (send dc set-transformation txm))]
+        [(llayout 'vertical ls)
+         (define lh (/ h (length ls)))
+         (for ([l (in-list ls)]
+               [i (in-naturals)])
+           (define txm (send dc get-transformation))
+           (send dc translate 0 (* i lh))
+           (draw-layout! w lh l)
+           (send dc set-transformation txm))])
+      (send dc set-clipping-region old))
+
+    (define (draw-view! focused? v)
+      (define bid (view-buffer v))
+      (define b (rstate-buffer rs bid))
+      (for ([l (in-list (buffer:file-content b))]
+            [row (in-naturals)])
+        (send dc draw-text l 0 (* row char-height)))
+
+      (let ()
+        (match-define (cursor row col) (view-cursor v))
+        (send dc set-brush (if focused?
+                             cursor-fill-c/focus
+                             cursor-fill-c/unfocus)
+              'solid)
+        (send dc set-pen cursor-outline-c 1 'solid)
+
+        (send dc draw-rectangle
+              (* col char-width) (* row char-height)
+              char-width char-height)))
+
+    (draw-layout! w h (rstate-layout rs)))
+
+  (gui-frame-refresh! gf draw!)
   (void))
 
 (define (start rs)
@@ -213,6 +250,13 @@
    (rstate (hasheq 0
                    (path->buffer "../TODO.org"))
            (hasheq 0
+                   (view (cursor 0 0) 0)
+                   1
                    (view (cursor 0 0) 0))
-           (vlayout 0)
-           '())))
+           (llayout 'horizontal
+                    (list (vlayout 0)
+                          (llayout 'vertical
+                                   (list (vlayout 1)
+                                         (vlayout 0)))
+                          (vlayout 0)))
+           '(0))))
