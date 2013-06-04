@@ -93,3 +93,5 @@ Commands could search their body for overlays of a specific type
 
    big challenge might be doing off-screen rendering and then
    figuring out where an object is to overlay on it?
+
+** TODO integrate with anthy for JP input
