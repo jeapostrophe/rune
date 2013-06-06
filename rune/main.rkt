@@ -71,7 +71,11 @@
     (send gf show #t)
     (gframe gf c paint-box))
 
-  (define (set-gui-frame-label! gf l)
+  (define (set-gui-frame-label! gf i [prepend? #f])
+    (define l
+      (if prepend?
+        (format "~a: ~a" i (send (gframe-f gf) get-label))
+        i))
     (send (gframe-f gf) set-label l))
 
   (define (gui-frame-refresh! gf f)
@@ -92,6 +96,8 @@
 
 (require racket/draw
          racket/class)
+
+(define buffer->bm (make-hasheq))
 
 (define (rstate-render! gf rs)
   (define cursor-outline-c (make-object color% 0 0 255 1.0))
@@ -127,7 +133,7 @@
                (if focused?
                  frame-outline-c
                  frame-outline-c/dull)
-               1 'solid)
+               2 'solid)
          (send dc set-brush cursor-outline-c 'transparent)
          (send dc draw-rectangle 0 0 w h)
          (define txm (send dc get-transformation))
@@ -141,10 +147,33 @@
              ;; xxx get this from an overlay?
              (set-gui-frame-label! gf (buffer:file-path b)))
 
-           (for ([l (in-list (buffer:file-content b))]
-                 [row (in-naturals)])
-             (send dc draw-text l 0 (* row char-height)))
+           (define b-bm
+             (hash-ref! buffer->bm bid
+                        (λ ()
+                          (local-require (only-in racket/gui/base make-screen-bitmap))
 
+                          (define max-row (buffer-max-row b))
+                          (define max-col
+                            (for/fold ([mc 0])
+                                ([r (in-range (add1 max-row))])
+                              (max mc (buffer-max-col b r))))
+
+                          (define bm
+                            (make-screen-bitmap
+                             (inexact->exact (ceiling (* max-col char-width)))
+                             (inexact->exact (ceiling (* max-row char-height)))))
+                          (define bm-dc
+                            (send bm make-dc))
+
+                          (for ([l (in-list (buffer:file-content b))]
+                                [row (in-naturals)])
+                            (send bm-dc draw-text l 0 (* row char-height)))
+                          
+                          bm)))
+           
+           (send dc draw-bitmap-section b-bm 0 0 0 0 w h)
+           
+           ;; xxx cursor is off
            (let ()
              (match-define (cursor row col) c)
              (send dc set-brush (if focused?
@@ -212,7 +241,12 @@
   (define (iloop rs)
     (loop loop ch gf rs))
 
+  (define before-render (current-inexact-milliseconds))
   (rstate-render! gf rs)
+  (define after-render (current-inexact-milliseconds))
+  (set-gui-frame-label!
+   gf (format "~ams" (real->decimal-string (- after-render before-render)))
+   #t)
   (define next-rs
     (let loop ()
       (gui-sync
