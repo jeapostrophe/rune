@@ -49,17 +49,49 @@
 (module rune/gui/racket racket/base
   (require racket/gui/base
            racket/async-channel
+           racket/match
            racket/class)
 
   (struct gframe (f c pb))
+
+  (define (key-event->emacs-key ke)
+    (define kc
+      (match (send ke get-key-code)
+        [#\nul #f]
+        [#\rubout 'delete]
+        [#\backspace 'backspace]
+        [#\space 'space]
+        [#\return 'return]
+        [#\tab 'tab]
+        [(? char? c) c]
+        ['release #f]
+        [(? symbol? s) s]))
+    (define-syntax-rule (m b c)
+      (if (send ke b) (format "~a-" c) ""))
+    (define mods
+      (format "~a~a~a"
+              (m get-control-down "C")
+              (m    get-meta-down "M")
+              (m   get-shift-down "S")))
+    (define mods?
+      (not (string=? "" mods)))
+    (define kc-e
+      (if (symbol? kc)
+        (string->symbol (format "<~a>" kc))
+        kc))
+    (and kc-e
+         (if mods?
+           (string->symbol (format "~a~a" mods kc-e))
+           kc-e)))
 
   (define gf-canvas%
     (class canvas%
       (init-field event-ch)
 
       (define/override (on-char event)
-        ;; xxx make my own key abstraction
-        (async-channel-put event-ch (send event get-key-code)))
+        (define ek (key-event->emacs-key event))
+        (when ek
+          (async-channel-put event-ch ek)))
 
       (super-new)))
 
@@ -241,6 +273,13 @@
                     (λ (old)
                       (update-focused-layout more old k)))])]))
 
+(define (focused-layout fp l)
+  (match fp
+    [(list)
+     l]
+    [(list-rest this more)
+     (focused-layout more (list-ref (llayout-children l)))]))
+
 ;; We take loop as an argument so we can write tests that don't go
 ;; forever. Cute, huh?
 (define (rstate-loop loop ch gf rs)
@@ -260,15 +299,15 @@
         (handle-evt ch
                     (λ (ke)
                       (match ke
-                        [#\q
+                        ['C-q
                          (exit 0)]
-                        [(or 'left 'right 'up 'down)
+                        [(or '<left> '<right> '<up> '<down>)
                          (define-values (dc dr)
                            (match ke
-                             ['left (values -1 0)]
-                             ['right (values +1 0)]
-                             ['up (values 0 -1)]
-                             ['down (values 0 +1)]))
+                             ['<left> (values -1 0)]
+                             ['<right> (values +1 0)]
+                             ['<up> (values 0 -1)]
+                             ['<down> (values 0 +1)]))
 
                          (struct-copy
                           rstate rs
@@ -284,7 +323,8 @@
                                [cursor
                                 (cursor-move (vlayout-cursor v)
                                              dc dr b)])))])]
-                        [_
+                        [x
+                         (eprintf "ignored ~s\n" x)
                          (loop)])))))))
   (iloop next-rs))
 
