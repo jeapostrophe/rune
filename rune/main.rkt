@@ -14,7 +14,7 @@
 (define (buffer-max-col b r)
   (max 0 (sub1 (string-length (list-ref (buffer:file-content b) r)))))
 
-(struct cursor (row col))
+(struct cursor (row col) #:transparent)
 
 (define (clamp lo x hi)
   (min (max lo x) hi))
@@ -33,11 +33,22 @@
     [else
      (cursor nr maybe-nc)]))
 
-(struct layout ())
-(struct vlayout layout (cursor buffer))
-(struct llayout layout (style children))
+(struct view (cursor buffer))
 
-(struct rstate (buffers layout focus))
+(struct ctxt ())
+(struct ctxt:top ctxt ())
+
+;; parent is a ctxt
+;; style is a layout style
+;; left is a list of focus (reversed)
+;; right is a list of focus
+(struct ctxt:layer ctxt (parent style left right))
+
+;; ctxt is a ctxt
+;; view is a view
+(struct focus (ctxt view))
+
+(struct rstate (buffers focus))
 (define-syntax-rule (define-rstate-lookup rstate-view rstate-views err)
   (define (rstate-view rs vid)
     (hash-ref (rstate-views rs) vid
@@ -145,7 +156,7 @@
   (define cursor-fill-c/focus (make-object color% 0 0 255 0.5))
   (define cursor-fill-c/unfocus (make-object color% 0 0 255 0.0))
 
-  (define (draw! w h dc)
+  (define (draw! full-w full-h dc)
     ;; xxx configurable
     (send dc clear)
     (define the-font (make-font #:family 'modern))
@@ -162,88 +173,122 @@
     (define hmargin (* char-width margin%))
     (define vmargin (* char-height margin%))
 
-    (define (draw-layout! x y w h fp l)
-      (match l
-        [(vlayout c bid)
-         (define focused? (empty? fp))
+    (define (draw-view! x y w h focused? v)
+      (match-define (view c bid) v)
+    
+      ;; Render a buffer
+      (let ()
+        (define b (rstate-buffer rs bid))
+        (when focused?
+          ;; xxx get this from an overlay?
+          (set-gui-frame-label! gf (buffer:file-path b)))
 
-         ;; Render a buffer
-         (let ()
-           (define b (rstate-buffer rs bid))
-           (when focused?
-             ;; xxx get this from an overlay?
-             (set-gui-frame-label! gf (buffer:file-path b)))
+        (define b-bm
+          (hash-ref! buffer->bm bid
+                     (λ ()
+                       (local-require (only-in racket/gui/base make-screen-bitmap))
 
-           (define b-bm
-             (hash-ref! buffer->bm bid
-                        (λ ()
-                          (local-require (only-in racket/gui/base make-screen-bitmap))
+                       (define max-row (buffer-max-row b))
+                       (define max-col
+                         (for/fold ([mc 0])
+                             ([r (in-range (add1 max-row))])
+                           (max mc (buffer-max-col b r))))
 
-                          (define max-row (buffer-max-row b))
-                          (define max-col
-                            (for/fold ([mc 0])
-                                ([r (in-range (add1 max-row))])
-                              (max mc (buffer-max-col b r))))
+                       (define bm
+                         (make-screen-bitmap
+                          (inexact->exact (ceiling (* max-col char-width)))
+                          (inexact->exact (ceiling (* max-row char-height)))))
+                       (define bm-dc
+                         (send bm make-dc))
 
-                          (define bm
-                            (make-screen-bitmap
-                             (inexact->exact (ceiling (* max-col char-width)))
-                             (inexact->exact (ceiling (* max-row char-height)))))
-                          (define bm-dc
-                            (send bm make-dc))
+                       (send bm-dc set-font the-font)
 
-                          (send bm-dc set-font the-font)
+                       (for ([l (in-list (buffer:file-content b))]
+                             [row (in-naturals)])
+                         (send bm-dc draw-text l 0 (* row char-height)))
 
-                          (for ([l (in-list (buffer:file-content b))]
-                                [row (in-naturals)])
-                            (send bm-dc draw-text l 0 (* row char-height)))
+                       bm)))
 
-                          bm)))
+        (send dc draw-bitmap-section b-bm
+              (+ x hmargin) (+ y vmargin)
+              0 0
+              (max 0 (- w hmargin)) (max 0 (- h vmargin))))
 
-           (send dc draw-bitmap-section b-bm
-                 (+ x hmargin) (+ y vmargin)
-                 0 0
-                 (max 0 (- w hmargin)) (max 0 (- h vmargin))))
+      ;; Outline
+      (let ()
+        (send dc set-pen
+              (if focused?
+                frame-outline-c
+                frame-outline-c/dull)
+              2 'solid)
+        (send dc set-brush cursor-outline-c 'transparent)
+        (send dc draw-rectangle x y w h))
 
-         ;; Outline
-         (let ()
-           (send dc set-pen
-                 (if focused?
-                   frame-outline-c
-                   frame-outline-c/dull)
-                 2 'solid)
-           (send dc set-brush cursor-outline-c 'transparent)
-           (send dc draw-rectangle x y w h))
+      ;; Cursor
+      (let ()
+        (match-define (cursor row col) c)
+        (send dc set-brush (if focused?
+                             cursor-fill-c/focus
+                             cursor-fill-c/unfocus)
+              'solid)
+        (send dc set-pen cursor-outline-c 1 'solid)
 
-         ;; Cursor
-         (let ()
-           (match-define (cursor row col) c)
-           (send dc set-brush (if focused?
-                                cursor-fill-c/focus
-                                cursor-fill-c/unfocus)
-                 'solid)
-           (send dc set-pen cursor-outline-c 1 'solid)
+        (let ()
+          (define cursor-x (+ x hmargin (* col char-width)))
+          (define cursor-y (+ y vmargin (* row char-height)))
+          (unless (or (< w (+ cursor-x char-width))
+                      (< h (+ cursor-y char-height)))
+            (send dc draw-rectangle
+                  cursor-x cursor-y
+                  char-width char-height)))))
 
-           (let ()
-             (define cursor-x (+ x hmargin (* col char-width)))
-             (define cursor-y (+ y vmargin (* row char-height)))
-             (unless (or (< w (+ cursor-x char-width))
-                         (< h (+ cursor-y char-height)))
-               (send dc draw-rectangle
-                     cursor-x cursor-y
-                     char-width char-height))))]
-        [(llayout 'horizontal ls)
-         (define lw (/ w (length ls)))
-         (for ([l (in-list ls)]
-               [i (in-naturals)])
-           (draw-layout! (+ x (* i lw)) y lw h (focus-path-rest fp i) l))]
-        [(llayout 'vertical ls)
-         (define lh (/ h (length ls)))
-         (for ([l (in-list ls)]
-               [i (in-naturals)])
-           (draw-layout! x (+ y (* i lh)) w lh (focus-path-rest fp i) l))]))
+    (define (draw-ctxt! x y w h c)
+      (match c
+        [(ctxt:top)
+         (values x y w h)]
+        [(ctxt:layer p s l r)
+         (define-values (mx my mw mh) (draw-ctxt! x y w h p))
+         (match s
+           ;; xxx merge these
+           ['horizontal
+            (define i (length l))
+            (define ew (/ mw (+ i 1 (length r))))
+            (define (xof j)
+              (+ mx (* j ew)))
 
-    (draw-layout! 0 0 w h (rstate-focus rs) (rstate-layout rs)))
+            (for ([sf (in-list l)]
+                  [rj (in-naturals 1)])
+              (define j (- i rj))
+              (draw-focus! (xof j) my ew mh #f sf))
+            (for ([sf (in-list r)]
+                  [aj (in-naturals 1)])
+              (define j (+ i aj))
+              (draw-focus! (xof j) my ew mh #f sf))
+
+            (values (xof i) my ew mh)]
+           ['vertical
+            (define i (length l))
+            (define eh (/ mh (+ i 1 (length r))))
+            (define (yof j)
+              (+ my (* j eh)))
+
+            (for ([sf (in-list l)]
+                  [rj (in-naturals 1)])
+              (define j (- i rj))
+              (draw-focus! mx (yof j) mw eh #f sf))
+            (for ([sf (in-list r)]
+                  [aj (in-naturals 1)])
+              (define j (+ i aj))
+              (draw-focus! mx (yof j) mw eh #f sf))
+
+            (values mx (yof i) mw eh)])]))
+
+    (define (draw-focus! x y w h focused? f)
+      (match-define (focus c v) f)
+      (define-values (mx my mw mh) (draw-ctxt! x y w h c))
+      (draw-view! mx my mw mh focused? v))
+
+    (draw-focus! 0 0 full-w full-h #t (rstate-focus rs)))
 
   (gui-frame-refresh! gf draw!)
   (void))
@@ -252,33 +297,6 @@
   (define ch (make-async-channel))
   (define gf (gui-frame ch))
   (rstate-loop rstate-loop ch gf rs))
-
-(define (list-update l i f)
-  (for/list ([e (in-list l)]
-             [j (in-naturals)])
-    (if (= i j)
-      (f e)
-      e)))
-
-(define (update-focused-layout fp l k)
-  (match fp
-    [(list)
-     (k l)]
-    [(list-rest this more)
-     (struct-copy
-      llayout l
-      [children
-       (list-update (llayout-children l)
-                    this
-                    (λ (old)
-                      (update-focused-layout more old k)))])]))
-
-(define (focused-layout fp l)
-  (match fp
-    [(list)
-     l]
-    [(list-rest this more)
-     (focused-layout more (list-ref (llayout-children l)))]))
 
 (define-match-expander rune-key
   (syntax-rules ()
@@ -298,40 +316,19 @@
   (define (move-cursor dc dr)
     (struct-copy
      rstate rs
-     [layout
-      (update-focused-layout
-       (rstate-focus rs)
-       (rstate-layout rs)
-       (λ (v)
-         (define bid (vlayout-buffer v))
-         (define b (rstate-buffer rs bid))
-         (struct-copy
-          vlayout v
-          [cursor
-           (cursor-move (vlayout-cursor v)
-                        dc dr b)])))]))
+     [focus
+      (let ()
+        (match-define (focus ctxt v) (rstate-focus rs))
+        (match-define (view c bid) v)
+        (define b (rstate-buffer rs bid))
+        (focus ctxt (view (cursor-move c dc dr b) bid)))]))
 
-  (define (snoc l x) (append l (list x)))
   (define (move-meta-focus df)
-    (struct-copy
-     rstate rs
-     [focus
-      (match (rstate-focus rs)
-        [(list a ... (? number? last-lvl) (? number? current-lvl))
-         ;; xxx wrap around last-vl
-         (snoc a (+ df last-lvl))]
-        [x
-         x])]))
+    (eprintf "move-meta-focus ~e\n" (list (rstate-focus rs) df))
+    rs)
   (define (move-focus df)
-    (struct-copy
-     rstate rs
-     [focus
-      (match (rstate-focus rs)
-        [(list a ... (? number? current-lvl))
-         ;; xxx wrap around last-vl
-         (snoc a (+ df current-lvl))]
-        [x
-         x])]))
+    (eprintf "move-focus ~e\n" (list (rstate-focus rs) df))
+    rs)
 
   (define next-rs
     (let loop ([h empty])
@@ -374,10 +371,19 @@
   (start
    (rstate (hasheq 0
                    (path->buffer "../TODO.org"))
-           (llayout 'horizontal
-                    (list (vlayout (cursor 0 0) 0)
-                          (llayout 'vertical
-                                   (list (vlayout (cursor 0 0) 0)
-                                         (vlayout (cursor 0 0) 0)))
-                          (vlayout (cursor 0 0) 0)))
-           '(0))))
+           (focus (ctxt:layer
+                   (ctxt:top)
+                   'horizontal
+                   (list)
+                   (list
+                    (focus (ctxt:layer
+                            (ctxt:top)
+                            'vertical
+                            (list
+                             (focus (ctxt:top)
+                                    (view (cursor 2 0) 0)))
+                            empty)
+                           (view (cursor 3 0) 0))
+                    (focus (ctxt:top)
+                           (view (cursor 1 0) 0))))
+                  (view (cursor 0 0) 0)))))
