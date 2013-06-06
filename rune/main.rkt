@@ -21,10 +21,17 @@
 (define (cursor-move a-c dc dr b)
   (match-define (cursor r c) a-c)
   (define nr (clamp 0 (+ r dr) (buffer-max-row b)))
-  (define nc
-    ;; xxx switch rows rather than clamp
-    (clamp 0 (+ c dc) (buffer-max-col b nr)))
-  (cursor nr nc))
+  (define maybe-nc (+ c dc))
+  (cond
+    [(< maybe-nc 0)
+     ;; Move back one row and to the far right
+     (define nnr (max 0 (sub1 nr)))
+     (cursor nnr (buffer-max-col b nnr))]
+    [(< (buffer-max-col b nr) maybe-nc)
+     (define nnr (min (add1 nr) (buffer-max-row b)))
+     (cursor nnr 0)]
+    [else
+     (cursor nr maybe-nc)]))
 
 (struct layout ())
 (struct vlayout layout (cursor buffer))
