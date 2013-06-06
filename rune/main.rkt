@@ -122,27 +122,14 @@
     (define hmargin (* char-width margin%))
     (define vmargin (* char-height margin%))
 
-    (define (draw-layout! w h fp l)
-      (define old (send dc get-clipping-region))
-      (send dc set-clipping-rect
-            0 0 w h)
+    (define (draw-layout! x y w h fp l)
       (match l
         [(vlayout c bid)
          (define focused? (empty? fp))
-         (send dc set-pen
-               (if focused?
-                 frame-outline-c
-                 frame-outline-c/dull)
-               2 'solid)
-         (send dc set-brush cursor-outline-c 'transparent)
-         (send dc draw-rectangle 0 0 w h)
-         (define txm (send dc get-transformation))
-         (send dc translate hmargin vmargin)
 
          ;; Render a buffer
          (let ()
            (define b (rstate-buffer rs bid))
-
            (when focused?
              ;; xxx get this from an overlay?
              (set-gui-frame-label! gf (buffer:file-path b)))
@@ -165,47 +152,55 @@
                           (define bm-dc
                             (send bm make-dc))
 
+                          (send bm-dc set-font (make-font #:family 'modern))
+
                           (for ([l (in-list (buffer:file-content b))]
                                 [row (in-naturals)])
                             (send bm-dc draw-text l 0 (* row char-height)))
-                          
+
                           bm)))
-           
-           (send dc draw-bitmap-section b-bm 0 0 0 0 w h)
-           
-           ;; xxx cursor is off
-           (let ()
-             (match-define (cursor row col) c)
-             (send dc set-brush (if focused?
-                                  cursor-fill-c/focus
-                                  cursor-fill-c/unfocus)
-                   'solid)
-             (send dc set-pen cursor-outline-c 1 'solid)
 
-             (send dc draw-rectangle
-                   (* col char-width) (* row char-height)
-                   char-width char-height)))
+           (send dc draw-bitmap-section b-bm
+                 (+ x hmargin) (+ y vmargin)
+                 0 0
+                 (max 0 (- w hmargin)) (max 0 (- h vmargin))))
 
-         (send dc set-transformation txm)]
+         ;; Outline
+         (let ()
+             (send dc set-pen
+                   (if focused?
+                     frame-outline-c
+                     frame-outline-c/dull)
+                   2 'solid)
+             (send dc set-brush cursor-outline-c 'transparent)
+             (send dc draw-rectangle x y w h))
+
+         ;; Cursor
+         (let ()
+           (match-define (cursor row col) c)
+           (send dc set-brush (if focused?
+                                cursor-fill-c/focus
+                                cursor-fill-c/unfocus)
+                 'solid)
+           (send dc set-pen cursor-outline-c 1 'solid)
+
+           ;; xxx doesn't respect w/h
+           (send dc draw-rectangle
+                 (+ x hmargin (* col char-width))
+                 (+ y vmargin (* row char-height))
+                 char-width char-height))]
         [(llayout 'horizontal ls)
          (define lw (/ w (length ls)))
          (for ([l (in-list ls)]
                [i (in-naturals)])
-           (define txm (send dc get-transformation))
-           (send dc translate (* i lw) 0)
-           (draw-layout! lw h (focus-path-rest fp i) l)
-           (send dc set-transformation txm))]
+           (draw-layout! (+ x (* i lw)) y lw h (focus-path-rest fp i) l))]
         [(llayout 'vertical ls)
          (define lh (/ h (length ls)))
          (for ([l (in-list ls)]
                [i (in-naturals)])
-           (define txm (send dc get-transformation))
-           (send dc translate 0 (* i lh))
-           (draw-layout! w lh (focus-path-rest fp i) l)
-           (send dc set-transformation txm))])
-      (send dc set-clipping-region old))
+           (draw-layout! x (+ y (* i lh)) w lh (focus-path-rest fp i) l))]))
 
-    (draw-layout! w h (rstate-focus rs) (rstate-layout rs)))
+    (draw-layout! 0 0 w h (rstate-focus rs) (rstate-layout rs)))
 
   (gui-frame-refresh! gf draw!)
   (void))
