@@ -168,13 +168,13 @@
 
          ;; Outline
          (let ()
-             (send dc set-pen
-                   (if focused?
-                     frame-outline-c
-                     frame-outline-c/dull)
-                   2 'solid)
-             (send dc set-brush cursor-outline-c 'transparent)
-             (send dc draw-rectangle x y w h))
+           (send dc set-pen
+                 (if focused?
+                   frame-outline-c
+                   frame-outline-c/dull)
+                 2 'solid)
+           (send dc set-brush cursor-outline-c 'transparent)
+           (send dc draw-rectangle x y w h))
 
          ;; Cursor
          (let ()
@@ -185,11 +185,14 @@
                  'solid)
            (send dc set-pen cursor-outline-c 1 'solid)
 
-           ;; xxx doesn't respect w/h
-           (send dc draw-rectangle
-                 (+ x hmargin (* col char-width))
-                 (+ y vmargin (* row char-height))
-                 char-width char-height))]
+           (let ()
+             (define cursor-x (+ x hmargin (* col char-width)))
+             (define cursor-y (+ y vmargin (* row char-height)))
+             (unless (or (< w (+ cursor-x char-width))
+                         (< h (+ cursor-y char-height)))
+               (send dc draw-rectangle
+                     cursor-x cursor-y
+                     char-width char-height))))]
         [(llayout 'horizontal ls)
          (define lw (/ w (length ls)))
          (for ([l (in-list ls)]
