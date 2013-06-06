@@ -109,7 +109,8 @@
   (define (draw! w h dc)
     ;; xxx configurable
     (send dc clear)
-    (send dc set-font (make-font #:family 'modern))
+    (define the-font (make-font #:family 'modern))
+    (send dc set-font the-font)
     (send dc set-text-foreground "black")
     (send dc set-text-mode 'transparent)
 
@@ -152,7 +153,7 @@
                           (define bm-dc
                             (send bm make-dc))
 
-                          (send bm-dc set-font (make-font #:family 'modern))
+                          (send bm-dc set-font the-font)
 
                           (for ([l (in-list (buffer:file-content b))]
                                 [row (in-naturals)])
