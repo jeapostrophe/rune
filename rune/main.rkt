@@ -287,15 +287,52 @@
 ;; We take loop as an argument so we can write tests that don't go
 ;; forever. Cute, huh?
 (define (rstate-loop loop ch gf rs)
-  (define (iloop rs)
-    (loop loop ch gf rs))
+  (let ()
+    (define before-render (current-inexact-milliseconds))
+    (rstate-render! gf rs)
+    (define after-render (current-inexact-milliseconds))
+    (set-gui-frame-label!
+     gf (format "~ams" (real->decimal-string (- after-render before-render)))
+     #t))
 
-  (define before-render (current-inexact-milliseconds))
-  (rstate-render! gf rs)
-  (define after-render (current-inexact-milliseconds))
-  (set-gui-frame-label!
-   gf (format "~ams" (real->decimal-string (- after-render before-render)))
-   #t)
+  (define (move-cursor dc dr)
+    (struct-copy
+     rstate rs
+     [layout
+      (update-focused-layout
+       (rstate-focus rs)
+       (rstate-layout rs)
+       (λ (v)
+         (define bid (vlayout-buffer v))
+         (define b (rstate-buffer rs bid))
+         (struct-copy
+          vlayout v
+          [cursor
+           (cursor-move (vlayout-cursor v)
+                        dc dr b)])))]))
+
+  (define (snoc l x) (append l (list x)))
+  (define (move-meta-focus df)
+    (struct-copy
+     rstate rs
+     [focus
+      (match (rstate-focus rs)
+        [(list a ... (? number? last-lvl) (? number? current-lvl))
+         ;; xxx wrap around last-vl
+         (snoc a (+ df last-lvl))]
+        [x
+         x])]))
+  (define (move-focus df)
+    (struct-copy
+     rstate rs
+     [focus
+      (match (rstate-focus rs)
+        [(list a ... (? number? current-lvl))
+         ;; xxx wrap around last-vl
+         (snoc a (+ df current-lvl))]
+        [x
+         x])]))
+
   (define next-rs
     (let loop ([h empty])
       (gui-sync
@@ -307,31 +344,31 @@
                          (exit 0)]
                         [(rune-key 'C-c 'C-x)
                          (exit 0)]
-                        [(rune-key (or '<left> '<right> '<up> '<down>))
-                         (define-values (dc dr)
-                           (match ke
-                             ['<left> (values -1 0)]
-                             ['<right> (values +1 0)]
-                             ['<up> (values 0 -1)]
-                             ['<down> (values 0 +1)]))
-                         (struct-copy
-                          rstate rs
-                          [layout
-                           (update-focused-layout
-                            (rstate-focus rs)
-                            (rstate-layout rs)
-                            (λ (v)
-                              (define bid (vlayout-buffer v))
-                              (define b (rstate-buffer rs bid))
-                              (struct-copy
-                               vlayout v
-                               [cursor
-                                (cursor-move (vlayout-cursor v)
-                                             dc dr b)])))])]
+
+                        [(rune-key 'C-<left>)
+                         (move-focus -1)]
+                        [(rune-key 'C-<right>)
+                         (move-focus +1)]
+
+                        [(rune-key 'C-<up>)
+                         (move-meta-focus -1)]
+                        [(rune-key 'C-<down>)
+                         (move-meta-focus +1)]
+
+                        [(rune-key '<left>)
+                         (move-cursor -1 0)]
+                        [(rune-key '<right>)
+                         (move-cursor +1 0)]
+                        [(rune-key '<up>)
+                         (move-cursor 0 -1)]
+                        [(rune-key '<down>)
+                         (move-cursor 0 +1)]
+
                         [x
                          (eprintf "ignored ~s\n" x)
                          (loop x)])))))))
-  (iloop next-rs))
+
+  (loop loop ch gf next-rs))
 
 (module+ main
   (start

@@ -54,6 +54,30 @@ Special Rune programs can produce pre-overlayed text.
 Commands could search their body for overlays of a specific type
 (such as "how many words are spelled wrong?")
 
+* Layout Tree
+
+  A view is a cursor plus a buffer---it represents an active buffer.
+
+  A layout is n-ary tree where branches have "styles" and the leaves
+  are views. Styles are stuff like: 
+  - horizontal: Children are distributed equally horizontally
+  - vertical: Children are distributed equally vertically
+  - tall: One child is horizontal and the other children are
+    vertical
+  - mirror tall: One child is vertical and the other children are
+    horizontal
+  - full: One child has the whole space and the other children are
+    hidden
+  - header: There are exactly two children, one is on top and never
+    receives focus
+  - footer: There are exactly two children, one is on bottom and never
+    receives focus
+ 
+ [My Xmonad setup is (header "xmobar" (full (tall ...) (tall ...)
+ ...)), whereas a normal emacs window is (footer (footer (view)
+ mode-line) mini-buffer)]
+
+ A focus is a zipper of a layout.
 * Tasks
 ** TODO Think about emacs design
    http://en.wikipedia.org/wiki/Emacs
