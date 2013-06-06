@@ -1,5 +1,6 @@
 #lang racket/base
 (require racket/file
+         racket/list
          racket/match
          racket/async-channel)
 
@@ -25,20 +26,17 @@
     (clamp 0 (+ c dc) (buffer-max-col b nr)))
   (cursor nr nc))
 
-(struct view (cursor buffer))
-
 (struct layout ())
-(struct vlayout layout (v))
+(struct vlayout layout (cursor buffer))
 (struct llayout layout (style children))
 
-(struct rstate (buffers views layout focus))
+(struct rstate (buffers layout focus))
 (define-syntax-rule (define-rstate-lookup rstate-view rstate-views err)
   (define (rstate-view rs vid)
     (hash-ref (rstate-views rs) vid
               (λ ()
                 (error 'rstate-view err vid)))))
 
-(define-rstate-lookup rstate-view rstate-views "Unknown view ~e")
 (define-rstate-lookup rstate-buffer rstate-buffers "Unknown buffer ~e")
 
 (module rune/gui/racket racket/base
@@ -89,27 +87,13 @@
 
 (require (submod "." rune/gui/racket))
 
-(define layout-focused-view
-  (match-lambda*
-   [(list (list) (vlayout v))
-    v]
-   [(list (list-rest this more) (llayout _ cs))
-    (layout-focused-view more (list-ref cs this))]))
+(define (focus-path-rest fp i)
+  (and fp (= i (first fp)) (rest fp)))
 
 (require racket/draw
          racket/class)
 
 (define (rstate-render! gf rs)
-  (define focused-vid
-    (let ()
-      (define vid (layout-focused-view (rstate-focus rs) (rstate-layout rs)))
-      (define v (rstate-view rs vid))
-      (define bid (view-buffer v))
-      (define b (rstate-buffer rs bid))
-      ;; xxx get this from an overlay?
-      (set-gui-frame-label! gf (buffer:file-path b))
-      vid))
-
   (define cursor-outline-c (make-object color% 0 0 255 1.0))
   (define frame-outline-c cursor-outline-c)
   (define frame-outline-c/dull (make-object color% 127 127 127 0.5))
@@ -132,20 +116,13 @@
     (define hmargin (* char-width margin%))
     (define vmargin (* char-height margin%))
 
-    (define (draw-layout! w h l)
+    (define (draw-layout! w h fp l)
       (define old (send dc get-clipping-region))
       (send dc set-clipping-rect
             0 0 w h)
       (match l
-        [(vlayout vid)
-
-         ;; xxx this notion of focused? is weird, because it is
-         ;; defined as a path, but then things that weren't on that
-         ;; path are focused too.
-         ;;
-         ;; maybe i should just merge vlayout and view?
-
-         (define focused? (eq? focused-vid vid))
+        [(vlayout c bid)
+         (define focused? (empty? fp))
          (send dc set-pen
                (if focused?
                  frame-outline-c
@@ -155,7 +132,31 @@
          (send dc draw-rectangle 0 0 w h)
          (define txm (send dc get-transformation))
          (send dc translate hmargin vmargin)
-         (draw-view! focused? (rstate-view rs vid))
+
+         ;; Render a buffer
+         (let ()
+           (define b (rstate-buffer rs bid))
+
+           (when focused?
+             ;; xxx get this from an overlay?
+             (set-gui-frame-label! gf (buffer:file-path b)))
+
+           (for ([l (in-list (buffer:file-content b))]
+                 [row (in-naturals)])
+             (send dc draw-text l 0 (* row char-height)))
+
+           (let ()
+             (match-define (cursor row col) c)
+             (send dc set-brush (if focused?
+                                  cursor-fill-c/focus
+                                  cursor-fill-c/unfocus)
+                   'solid)
+             (send dc set-pen cursor-outline-c 1 'solid)
+
+             (send dc draw-rectangle
+                   (* col char-width) (* row char-height)
+                   char-width char-height)))
+
          (send dc set-transformation txm)]
         [(llayout 'horizontal ls)
          (define lw (/ w (length ls)))
@@ -163,7 +164,7 @@
                [i (in-naturals)])
            (define txm (send dc get-transformation))
            (send dc translate (* i lw) 0)
-           (draw-layout! lw h l)
+           (draw-layout! lw h (focus-path-rest fp i) l)
            (send dc set-transformation txm))]
         [(llayout 'vertical ls)
          (define lh (/ h (length ls)))
@@ -171,30 +172,11 @@
                [i (in-naturals)])
            (define txm (send dc get-transformation))
            (send dc translate 0 (* i lh))
-           (draw-layout! w lh l)
+           (draw-layout! w lh (focus-path-rest fp i) l)
            (send dc set-transformation txm))])
       (send dc set-clipping-region old))
 
-    (define (draw-view! focused? v)
-      (define bid (view-buffer v))
-      (define b (rstate-buffer rs bid))
-      (for ([l (in-list (buffer:file-content b))]
-            [row (in-naturals)])
-        (send dc draw-text l 0 (* row char-height)))
-
-      (let ()
-        (match-define (cursor row col) (view-cursor v))
-        (send dc set-brush (if focused?
-                             cursor-fill-c/focus
-                             cursor-fill-c/unfocus)
-              'solid)
-        (send dc set-pen cursor-outline-c 1 'solid)
-
-        (send dc draw-rectangle
-              (* col char-width) (* row char-height)
-              char-width char-height)))
-
-    (draw-layout! w h (rstate-layout rs)))
+    (draw-layout! w h (rstate-focus rs) (rstate-layout rs)))
 
   (gui-frame-refresh! gf draw!)
   (void))
@@ -203,6 +185,26 @@
   (define ch (make-async-channel))
   (define gf (gui-frame ch))
   (rstate-loop rstate-loop ch gf rs))
+
+(define (list-update l i f)
+  (for/list ([e (in-list l)]
+             [j (in-naturals)])
+    (if (= i j)
+      (f e)
+      e)))
+
+(define (update-focused-layout fp l k)
+  (match fp
+    [(list)
+     (k l)]
+    [(list-rest this more)
+     (struct-copy
+      llayout l
+      [children
+       (list-update (llayout-children l)
+                    this
+                    (λ (old)
+                      (update-focused-layout more old k)))])]))
 
 ;; We take loop as an argument so we can write tests that don't go
 ;; forever. Cute, huh?
@@ -227,20 +229,21 @@
                              ['right (values +1 0)]
                              ['up (values 0 -1)]
                              ['down (values 0 +1)]))
-                         (define vid
-                           (layout-focused-view (rstate-focus rs) (rstate-layout rs)))
-                         (define v (rstate-view rs vid))
-                         (define bid (view-buffer v))
-                         (define b (rstate-buffer rs bid))
 
                          (struct-copy
                           rstate rs
-                          [views
-                           (hash-set (rstate-views rs) vid
-                                     (struct-copy view v
-                                                  [cursor
-                                                   (cursor-move (view-cursor v)
-                                                                dc dr b)]))])]
+                          [layout
+                           (update-focused-layout
+                            (rstate-focus rs)
+                            (rstate-layout rs)
+                            (λ (v)
+                              (define bid (vlayout-buffer v))
+                              (define b (rstate-buffer rs bid))
+                              (struct-copy
+                               vlayout v
+                               [cursor
+                                (cursor-move (vlayout-cursor v)
+                                             dc dr b)])))])]
                         [_
                          (loop)])))))))
   (iloop next-rs))
@@ -249,14 +252,10 @@
   (start
    (rstate (hasheq 0
                    (path->buffer "../TODO.org"))
-           (hasheq 0
-                   (view (cursor 0 0) 0)
-                   1
-                   (view (cursor 0 0) 0))
            (llayout 'horizontal
-                    (list (vlayout 0)
+                    (list (vlayout (cursor 0 0) 0)
                           (llayout 'vertical
-                                   (list (vlayout 1)
-                                         (vlayout 0)))
-                          (vlayout 0)))
+                                   (list (vlayout (cursor 0 0) 0)
+                                         (vlayout (cursor 0 0) 0)))
+                          (vlayout (cursor 0 0) 0)))
            '(0))))

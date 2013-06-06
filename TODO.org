@@ -78,6 +78,7 @@ Commands could search their body for overlays of a specific type
 
    Each "buffer" would get its own process to facilitate safe file
    modification
+** TODO implement gap buffer
 ** TODO what to do first?
    basic editor -> buffers/windows/frames -> multiple modes ->
    terminal -> shell -> org-mode -> canvas buffers (eog, evince) ->
