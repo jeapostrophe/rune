@@ -54,7 +54,7 @@
 
   (struct gframe (f c pb))
 
-  (define (key-event->emacs-key ke)
+  (define (key-event->rune-key ke)
     (define kc
       (match (send ke get-key-code)
         [#\nul #f]
@@ -89,7 +89,7 @@
       (init-field event-ch)
 
       (define/override (on-char event)
-        (define ek (key-event->emacs-key event))
+        (define ek (key-event->rune-key event))
         (when ek
           (async-channel-put event-ch ek)))
 
@@ -280,6 +280,10 @@
     [(list-rest this more)
      (focused-layout more (list-ref (llayout-children l)))]))
 
+(define-match-expander rune-key
+  (syntax-rules ()
+    [(_ e ...) (list* e ... _)]))
+
 ;; We take loop as an argument so we can write tests that don't go
 ;; forever. Cute, huh?
 (define (rstate-loop loop ch gf rs)
@@ -293,22 +297,23 @@
    gf (format "~ams" (real->decimal-string (- after-render before-render)))
    #t)
   (define next-rs
-    (let loop ()
+    (let loop ([h empty])
       (gui-sync
        (choice-evt
         (handle-evt ch
                     (λ (ke)
-                      (match ke
-                        ['C-q
+                      (match (cons ke h)
+                        [(rune-key 'C-q)
                          (exit 0)]
-                        [(or '<left> '<right> '<up> '<down>)
+                        [(rune-key 'C-c 'C-x)
+                         (exit 0)]
+                        [(rune-key (or '<left> '<right> '<up> '<down>))
                          (define-values (dc dr)
                            (match ke
                              ['<left> (values -1 0)]
                              ['<right> (values +1 0)]
                              ['<up> (values 0 -1)]
                              ['<down> (values 0 +1)]))
-
                          (struct-copy
                           rstate rs
                           [layout
@@ -325,7 +330,7 @@
                                              dc dr b)])))])]
                         [x
                          (eprintf "ignored ~s\n" x)
-                         (loop)])))))))
+                         (loop x)])))))))
   (iloop next-rs))
 
 (module+ main
