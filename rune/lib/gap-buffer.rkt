@@ -1,5 +1,6 @@
 #lang racket/base
 (require racket/match
+         racket/string
          racket/list)
 (module+ test
   (require rackunit)
@@ -7,8 +8,8 @@
   (define M 10)
   (define (random-char)
     (integer->char (+ (char->integer #\A) (random 26))))
-  (define (random-input)
-    (build-string M (λ (i) (random-char)))))
+  (define (random-input [len M])
+    (build-string len (λ (i) (random-char)))))
 
 (define debugf void)
 
@@ -136,8 +137,13 @@
 
   (test-move-seq "JJFSU" (list 4 1))
 
+  (define (random* n)
+    (if (zero? n) 0 (random n)))
+  (define (random-moves [len M])
+    (build-list N (λ (i) (random* len))))
+
   (for ([i (in-range N)])
-    (test-move-seq (random-input) (build-list N (λ (i) (random M))))))
+    (test-move-seq (random-input) (random-moves))))
 
 (define (gap-buffer-insert! gb c)
   (let ()
@@ -207,26 +213,99 @@
   (set-gap-buffer-gap-end! gb gap-size)
   (gap-buffer-move-to! gb old-gs))
 
-;; xxx untested check point
+;; xxx gap-buffer-delete!
+;; xxx gap-buffer-backspace!
+;; xxx gap-buffer-overwrite!
+;; xxx movement by more than one instantly?
 
 ;; xxx optimize?
-(define (regexp-match-count rx input start-pos [end-pos #f])
-  (length (regexp-match-positions* rx input start-pos end-pos)))
-
-(define newline-rx #rx"\n")
-(define (gap-buffer-newline-offsets gb)
+(define (gap-buffer-virtual->actual gb vpos)
+  ...)
+(define (gap-buffer-actual->virtual gb pos)
+  ...)
+(define (gap-buffer-newline-virtual-offsets gb)
+  (define newline-rx #rx"\n")
   (match-define (gap-buffer buf size pre post) gb)
   (define before (regexp-match-positions* newline-rx buf 0 pre))
   (define after (regexp-match-positions* newline-rx buf post))
-  (if (and (empty? before) (empty? after))
-    ;; xxx fix
-    (error 'gap-buffer-newline-offsets "No newline!")
-    (map car (append before after))))
 
-(define (gap-buffer-line-count gb)
-  (length (gap-buffer-newline-offsets gb)))
+  (define normal (map car (append before after)))
+  (define fake-newline-at-end
+    (cond
+      [(empty? normal)
+       (list size)]
+      [(not (empty? normal))
+       (define l (last normal))
+       (if (= l (sub1 size))
+         empty
+         (list size))]
+      [else
+       empty]))
+  (append normal fake-newline-at-end))
+(define (gap-buffer-rows gb)
+  (length (gap-buffer-newline-virtual-offsets gb)))
+(define (gap-buffer-row-virtual gb row)
+  (list-ref (gap-buffer-newline-virtual-offsets gb) row))
+(define (gap-buffer-row-cols gb row)
+  (- (virtual->actual (gap-buffer-row-virtual gb (add1 row)))
+     (virtual->actual (gap-buffer-row-virtual gb row))))
+(define (gap-buffer-actual-substring gb astart aend)
+  ...)
+(define (gap-buffer-row gb row)
+  (gap-buffer-actual-substring
+   gb
+   (gap-buffer-virtual->actual (gap-buffer-row-virtual gb (add1 row)))
+   (gap-buffer-virtual->actual (gap-buffer-row-virtual gb row))))
+(define (gap-buffer-move-to-rc! gb row col)
+  (gap-buffer-move-to!
+   gb
+   (gap-buffer-actual->virtual
+    (+ (gap-buffer-virtual->actual (gap-buffer-row-virtual gb row)) col))))
 
-(define (gap-buffer-line-ranges gb)
+(module+ test
+  (define (random-list-input)
+    (for/list ([i (in-range (random M))]) (random-input (random M))))
+
+  (define (test-rows-inner i moves e [li #f])
+    (define gb (string->gap-buffer i))
+    (test-case
+     (format "test-rows ~v ~v ~v ~v" i moves e li)
+     (check-equal? (gap-buffer-rows gb) e)
+     (for ([pos (in-list moves)])
+       (gap-buffer-move-to! gb pos)
+       (check-equal? (gap-buffer-rows gb) e))))
+
+  (define ((test-list-input test-rows-inner)
+           li [movesf (λ (i) empty)] [add-to-last? #t])
+    (define i
+      (string-append*
+       (if add-to-last?
+         (map (λ (s) (string-append s "\n")) li)
+         (add-between li "\n"))))
+    (define e
+      (cond
+        [(empty? li)
+         1]
+        [(and (not add-to-last?) (string=? "" (last li)))
+         (max 1 (sub1 (length li)))]
+        [else
+         (length li)]))
+    (define moves (movesf i))
+    (test-rows-inner i moves e (vector add-to-last? li)))
+
+  (define test-rows (test-list-input test-rows-inner))
+
+  (define (random-string-moves s)
+    (random-moves (string-length s)))
+
+  (test-rows empty)
+  (test-rows '("") (λ (s) empty) #f)
+  (test-rows '("G" "KXJKKJQL" "SC" "IAYAS" "") (λ (s) empty) #f)
+  (for* ([i (in-range N)]
+         [? (in-list '(#t #f))])
+    (test-rows (random-list-input) random-string-moves ?)))
+
+(define (gap-buffer-row-ranges gb)
   (match-define (gap-buffer buf size pre post) gb)
   (define last 0)
   (define past-gap? #f)
@@ -239,26 +318,61 @@
     (begin0 (cons last end)
             (set! last actual-end))))
 
-(define (gap-buffer-line-cols gb line)
-  (match (list-ref (gap-buffer-line-ranges gb) line)
+(define (gap-buffer-row-cols gb row)
+  (match (list-ref (gap-buffer-row-ranges gb) row)
     [(list start mid-start mid-end end)
-     (sub1 (+ (- mid-start start) (- end mid-end)))]
+     (+ (- mid-start start) (- end mid-end))]
     [(cons start end)
      (sub1 (- end start))]))
 
-(define (gap-buffer-lines gb)
+;; xxx gap-buffer-row-cols
+
+(module+ test
+
+  (define (test-row-cols-inner i moves rows orig)
+    (match-define (vector ? li) orig)
+    (define gb (string->gap-buffer i))
+    (define (check)
+      (for ([row (in-range rows)])
+        (check-equal? (gap-buffer-row-cols gb row)
+                      (if (empty? li) 0 (string-length (list-ref li row)))
+                      (format "row ~a" row))))
+    (test-case
+     (format "test-row-cols ~v ~v ~v ~v" i moves rows orig)
+     (check)
+     (for ([pos (in-list moves)])
+       (gap-buffer-move-to! gb pos)
+       (check))))
+
+  (define test-row-cols (test-list-input test-row-cols-inner))
+
+  (test-row-cols empty (λ (s) empty) #f)
+  (test-row-cols '("") (λ (s) '(0)) #f)
+  (test-row-cols '("J" "") (λ (s) '()) #t)
+  (test-row-cols '("C" "VO" "LFRLNYUAJ" "IMDY" "BWO")
+                 (λ (s) '(14 14 1 4 5 11 17 23 0 21))
+                 #t)
+  (exit 1)
+
+  (for* ([i (in-range N)]
+         [? (in-list '(#t #f))])
+    (test-row-cols (random-list-input) random-string-moves ?)))
+
+;; xxx gap-buffer-row
+;; xxx gap-buffer-move-to-row&col!
+
+(define (gap-buffer-row gb row)
   (match-define (gap-buffer buf _ _ _) gb)
-  (for/list ([range (in-list (gap-buffer-line-ranges gb))])
-    (match range
-      [(list start mid-start mid-end end)
-       (string-append (substring buf start mid-start)
-                      (substring buf mid-end end))]
-      [(cons start end)
-       (substring buf start end)])))
+  (match (list-ref (gap-buffer-row-ranges gb) row)
+    [(list start mid-start mid-end end)
+     (string-append (substring buf start mid-start)
+                    (substring buf mid-end end))]
+    [(cons start end)
+     (substring buf start end)]))
 
 (define (gap-buffer-move-to/rc! gb row col)
   (debugf "moving to ~a,~a\n" row col)
-  (match (list-ref (gap-buffer-line-ranges gb) row)
+  (match (list-ref (gap-buffer-row-ranges gb) row)
     [(list start mid-start mid-end end)
      (define before-mid (- mid-start start))
      (debugf "line split across gap: ~e\n"
