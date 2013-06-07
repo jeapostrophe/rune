@@ -21,6 +21,18 @@
   (define nzb (z:buffer-insert-char zb row col c))
   (set-buffer:file-content! b nzb)
   (void))
+(define (buffer-delete-next! b row col)
+  (define zb (buffer:file-content b))
+  (with-handlers ([exn:fail? (λ (x) #f)])
+    (define-values (_ nzb) (z:buffer-delete-next zb row col))
+    (set-buffer:file-content! b nzb)
+    #t))
+(define (buffer-delete-previous! b row col)
+  (define zb (buffer:file-content b))
+  (with-handlers ([exn:fail? (λ (x) #f)])
+    (define-values (_ nzb) (z:buffer-delete-previous zb row col))
+    (set-buffer:file-content! b nzb)
+    #t))
 
 (struct cursor (row col) #:transparent)
 
@@ -378,6 +390,30 @@
         [f
          f])]))
 
+  (define (do-to-buffer f)
+    (match-define (focus ctxt v) (rstate-focus rs))
+    (match-define (view (cursor row col) bid) v)
+    (define b (rstate-buffer rs bid))
+    (begin0 (f b row col)
+            (hash-remove! buffer->bm bid)))
+
+  (define (insert-char c)
+    (do-to-buffer
+     (λ (b row col)
+       (buffer-insert-at! b row col c)
+       (move-cursor +1 0))))
+  (define (delete-next)
+    (do-to-buffer
+     (λ (b row col)
+       (buffer-delete-next! b row col)
+       rs)))
+  (define (delete-previous)
+    (do-to-buffer
+     (λ (b row col)
+       (if (buffer-delete-previous! b row col)
+         (move-cursor -1 0)
+         rs))))
+
   (define next-rs
     (let loop ([h empty])
       (gui-sync
@@ -410,12 +446,15 @@
                          (move-cursor 0 +1)]
 
                         [(rune-key (? char? c))
-                         (match-define (focus ctxt v) (rstate-focus rs))
-                         (match-define (view (cursor row col) bid) v)
-                         (define b (rstate-buffer rs bid))
-                         (buffer-insert-at! b row col c)
-                         (hash-remove! buffer->bm bid)
-                         (move-cursor +1 0)]
+                         (insert-char c)]
+                        [(rune-key '<return>)
+                         (insert-char #\newline)]
+                        [(rune-key '<space>)
+                         (insert-char #\space)]
+                        [(rune-key '<backspace>)
+                         (delete-previous)]
+                        [(rune-key '<delete>)
+                         (delete-next)]
 
                         [x
                          (eprintf "ignored ~s\n" x)
