@@ -218,53 +218,108 @@
 ;; xxx gap-buffer-overwrite!
 ;; xxx movement by more than one instantly?
 
+;; xxx what about newlines in the gaps? try to do something stupider
+;; like counting them as we go and storing a table
+
 ;; xxx optimize?
 (define (gap-buffer-virtual->actual gb vpos)
-  ...)
-(define (gap-buffer-actual->virtual gb pos)
-  ...)
+  (match-define (gap-buffer buf size pre post) gb)
+  (cond
+    [(< vpos pre)
+     vpos]
+    [(<= post vpos)
+     (- vpos post)]
+    [else
+     (error 'virtual->actual "Cannot refer to positions inside gap! vpos ~e inside [~e,~e]"
+            vpos pre post)]))
+(define (gap-buffer-actual->virtual gb apos)
+  (match-define (gap-buffer buf size pre post) gb)
+  (cond
+    [(< apos pre)
+     apos]
+    [(<= pre apos)
+     (+ apos post)]
+    [else
+     (error 'actual->virtual "??? ~e ~e ~e" apos pre post)]))
+
+(module+ test
+  (define (check-ava i ms)
+    (define gb (string->gap-buffer i))
+    (test-case
+     (format "~v" `(check-ava ,i ,ms))
+     (define (check)
+       (for ([pos (in-range (string-length i))])
+         (define vpos
+           (gap-buffer-actual->virtual gb pos))
+         (check-pred number? vpos)
+         (define npos
+           (gap-buffer-virtual->actual gb vpos))
+         (check-pred number? npos)
+         (check-equal? npos pos)))
+
+     (check)
+     (for ([pos (in-list ms)])
+       (gap-buffer-move-to! gb pos)
+       (check))))
+
+  (for ([i (in-range N)])
+    (check-ava (random-input) (random-moves))))
+
 (define (gap-buffer-newline-virtual-offsets gb)
   (define newline-rx #rx"\n")
   (match-define (gap-buffer buf size pre post) gb)
   (define before (regexp-match-positions* newline-rx buf 0 pre))
   (define after (regexp-match-positions* newline-rx buf post))
-
-  (define normal (map car (append before after)))
-  (define fake-newline-at-end
-    (cond
-      [(empty? normal)
-       (list size)]
-      [(not (empty? normal))
-       (define l (last normal))
-       (if (= l (sub1 size))
-         empty
-         (list size))]
-      [else
-       empty]))
-  (append normal fake-newline-at-end))
-(define (gap-buffer-rows gb)
-  (length (gap-buffer-newline-virtual-offsets gb)))
-(define (gap-buffer-row-virtual gb row)
-  (list-ref (gap-buffer-newline-virtual-offsets gb) row))
-(define (gap-buffer-row-cols gb row)
-  (- (virtual->actual (gap-buffer-row-virtual gb (add1 row)))
-     (virtual->actual (gap-buffer-row-virtual gb row))))
-(define (gap-buffer-actual-substring gb astart aend)
-  ...)
-(define (gap-buffer-row gb row)
-  (gap-buffer-actual-substring
-   gb
-   (gap-buffer-virtual->actual (gap-buffer-row-virtual gb (add1 row)))
-   (gap-buffer-virtual->actual (gap-buffer-row-virtual gb row))))
-(define (gap-buffer-move-to-rc! gb row col)
-  (gap-buffer-move-to!
-   gb
-   (gap-buffer-actual->virtual
-    (+ (gap-buffer-virtual->actual (gap-buffer-row-virtual gb row)) col))))
+  (map car (append before after)))
 
 (module+ test
   (define (random-list-input)
     (for/list ([i (in-range (random M))]) (random-input (random M))))
+  (define (list-input->string li)
+    (string-append* (add-between li "\n")))
+
+  (define (test-newlines li movesf)
+    (define i (list-input->string li))
+    (define gb (string->gap-buffer i))
+
+    (define moves (movesf (string-length i)))
+
+    (define (check)
+      (define nls (gap-buffer-newline-virtual-offsets gb))
+      ;; All newlines are in it
+      (for ([c (in-string i)]
+            [apos (in-naturals)])
+        (when (equal? #\newline c)
+          (define vpos (gap-buffer-actual->virtual gb apos))
+          (check-not-false (member vpos nls)
+                           (format "~a[~a] is present in ~a [~a]"
+                                   apos vpos nls
+                                   (gap-buffer-buf gb)))))
+
+      ;; Each thing is a new line
+      (for ([vpos (in-list nls)])
+        (define apos (gap-buffer-virtual->actual gb vpos))
+        (check-equal? (string-ref i apos) #\newline
+                      (format "~a is newline" vpos))))
+
+    (test-case
+     (format "~v\n" `(test-newlines ,i ,li ,moves))
+     (check)
+     (for ([m (in-list moves)])
+       (gap-buffer-move-to! gb m)
+       (check))))
+
+  (test-newlines '("E" "KOM" "QX") (λ (i) '(1 7 3 2 3 1 6 6 3 7)))
+  (exit 1)
+
+  (for ([i (in-range N)])
+    (test-newlines (random-list-input) random-moves))
+  (exit 1))
+
+(define (gap-buffer-rows gb)
+  (length (gap-buffer-newline-virtual-offsets gb)))
+
+(module+ test
 
   (define (test-rows-inner i moves e [li #f])
     (define gb (string->gap-buffer i))
@@ -305,25 +360,30 @@
          [? (in-list '(#t #f))])
     (test-rows (random-list-input) random-string-moves ?)))
 
-(define (gap-buffer-row-ranges gb)
+(define (gap-buffer-row-virtual gb row)
+  (list-ref (gap-buffer-newline-virtual-offsets gb) row))
+(define (gap-buffer-row-virtual-after gb row)
   (match-define (gap-buffer buf size pre post) gb)
-  (define last 0)
-  (define past-gap? #f)
-  (for/list ([actual-end (gap-buffer-newline-offsets gb)])
-    (define end actual-end)
-    (unless past-gap?
-      (when (<= post end)
-        (set! end (list pre post end))
-        (set! past-gap? #t)))
-    (begin0 (cons last end)
-            (set! last actual-end))))
-
+  (define offs (gap-buffer-newline-virtual-offsets gb))
+  (if (< (add1 row) (length offs))
+    (gap-buffer-row-virtual gb row)
+    (gap-buffer-actual->virtual gb (- size (current-gap-size)))))
 (define (gap-buffer-row-cols gb row)
-  (match (list-ref (gap-buffer-row-ranges gb) row)
-    [(list start mid-start mid-end end)
-     (+ (- mid-start start) (- end mid-end))]
-    [(cons start end)
-     (sub1 (- end start))]))
+  (- (gap-buffer-virtual->actual gb (gap-buffer-row-virtual-after gb row))
+     (gap-buffer-virtual->actual gb (gap-buffer-row-virtual gb row))))
+(define (gap-buffer-actual-substring gb astart aend)
+  ;; xxx
+  (error 'gap-buffer-actual-substring))
+(define (gap-buffer-row gb row)
+  (gap-buffer-actual-substring
+   gb
+   (gap-buffer-virtual->actual gb (gap-buffer-row-virtual-after gb row))
+   (gap-buffer-virtual->actual gb (gap-buffer-row-virtual gb row))))
+(define (gap-buffer-move-to-rc! gb row col)
+  (gap-buffer-move-to!
+   gb
+   (gap-buffer-actual->virtual gb
+                               (+ (gap-buffer-virtual->actual gb (gap-buffer-row-virtual gb row)) col))))
 
 ;; xxx gap-buffer-row-cols
 
@@ -360,31 +420,5 @@
 
 ;; xxx gap-buffer-row
 ;; xxx gap-buffer-move-to-row&col!
-
-(define (gap-buffer-row gb row)
-  (match-define (gap-buffer buf _ _ _) gb)
-  (match (list-ref (gap-buffer-row-ranges gb) row)
-    [(list start mid-start mid-end end)
-     (string-append (substring buf start mid-start)
-                    (substring buf mid-end end))]
-    [(cons start end)
-     (substring buf start end)]))
-
-(define (gap-buffer-move-to/rc! gb row col)
-  (debugf "moving to ~a,~a\n" row col)
-  (match (list-ref (gap-buffer-row-ranges gb) row)
-    [(list start mid-start mid-end end)
-     (define before-mid (- mid-start start))
-     (debugf "line split across gap: ~e\n"
-             (list start mid-start mid-end end before-mid))
-     (cond
-       [(< col before-mid)
-        (debugf "before mid\n")
-        (gap-buffer-move-to! gb (+ start col 1))]
-       [else
-        (debugf "after mid\n")
-        (gap-buffer-move-to! gb (+ mid-start (- col before-mid)))])]
-    [(cons start end)
-     (gap-buffer-move-to! gb (+ start col))]))
 
 (provide (all-defined-out))
