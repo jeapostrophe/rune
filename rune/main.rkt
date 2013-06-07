@@ -175,7 +175,7 @@
 
     (define (draw-view! x y w h focused? v)
       (match-define (view c bid) v)
-    
+
       ;; Render a buffer
       (let ()
         (define b (rstate-buffer rs bid))
@@ -226,6 +226,7 @@
 
       ;; Cursor
       (let ()
+        ;; xxx not showing for non-focused
         (match-define (cursor row col) c)
         (send dc set-brush (if focused?
                              cursor-fill-c/focus
@@ -323,11 +324,36 @@
         (define b (rstate-buffer rs bid))
         (focus ctxt (view (cursor-move c dc dr b) bid)))]))
 
+  (define (list-move-focus l r v df)
+    (cond
+      [(and (not (empty? l)) (negative? df))
+       (values (rest l) (list* (focus (ctxt:top) v) r) (first l))]
+      [(and (not (empty? r)) (positive? df))
+       (values (list* (focus (ctxt:top) v) l) (rest r) (first r))]
+      [else
+       (values l r (focus (ctxt:top) v))]))
+
+  (define (ctxt-reparent np c)
+    (match c
+      [(ctxt:top)
+       np]
+      [(ctxt:layer p s l r)
+       (ctxt:layer (ctxt-reparent np p) s l r)]))
+
+  (define (move-focus df)
+    (struct-copy
+     rstate rs
+     [focus
+      (match (rstate-focus rs)
+        [(focus (ctxt:layer p s l r) v)
+         (define-values (nl nr nf) (list-move-focus l r v df))
+         (match-define (focus nctxt nv) nf)
+         (focus (ctxt-reparent (ctxt:layer p s nl nr) nctxt) nv)]
+        [f
+         f])]))
+
   (define (move-meta-focus df)
     (eprintf "move-meta-focus ~e\n" (list (rstate-focus rs) df))
-    rs)
-  (define (move-focus df)
-    (eprintf "move-focus ~e\n" (list (rstate-focus rs) df))
     rs)
 
   (define next-rs
