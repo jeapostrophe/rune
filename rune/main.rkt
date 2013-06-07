@@ -324,14 +324,14 @@
         (define b (rstate-buffer rs bid))
         (focus ctxt (view (cursor-move c dc dr b) bid)))]))
 
-  (define (list-move-focus l r v df)
+  (define (list-move-focus l r f df)
     (cond
       [(and (not (empty? l)) (negative? df))
-       (values (rest l) (list* (focus (ctxt:top) v) r) (first l))]
+       (values (rest l) (list* f r) (first l))]
       [(and (not (empty? r)) (positive? df))
-       (values (list* (focus (ctxt:top) v) l) (rest r) (first r))]
+       (values (list* f l) (rest r) (first r))]
       [else
-       (values l r (focus (ctxt:top) v))]))
+       (values l r f)]))
 
   (define (ctxt-reparent np c)
     (match c
@@ -346,15 +346,25 @@
      [focus
       (match (rstate-focus rs)
         [(focus (ctxt:layer p s l r) v)
-         (define-values (nl nr nf) (list-move-focus l r v df))
+         (define f (focus (ctxt:top) v))
+         (define-values (nl nr nf) (list-move-focus l r f df))
          (match-define (focus nctxt nv) nf)
          (focus (ctxt-reparent (ctxt:layer p s nl nr) nctxt) nv)]
         [f
          f])]))
 
   (define (move-meta-focus df)
-    (eprintf "move-meta-focus ~e\n" (list (rstate-focus rs) df))
-    rs)
+    (struct-copy
+     rstate rs
+     [focus
+      (match (rstate-focus rs)
+        [(focus (ctxt:layer (ctxt:layer pp ps pl pr) s l r) v)
+         (define pf (focus (ctxt:layer (ctxt:top) s l r) v))
+         (define-values (npl npr npf) (list-move-focus pl pr pf df))
+         (match-define (focus nctxt nv) npf)
+         (focus (ctxt-reparent (ctxt:layer pp ps npl npr) nctxt) nv)]
+        [f
+         f])]))
 
   (define next-rs
     (let loop ([h empty])
