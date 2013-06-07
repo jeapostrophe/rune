@@ -14,8 +14,12 @@
     (set-gap-buffer-post! gb (+ d (gap-buffer-post gb))))
 
   (define (string->gap-buffer str)
-    ;; We copy because we mutate this string
-    (gap-buffer (string-copy str) (string-length str) 0 0))
+    (define len (string-length str))
+    (define new-len (+ len len))
+    (define new-str (make-string new-len))
+    (string-copy! new-str len str)
+    (define gb (gap-buffer new-str new-len 0 len))
+    gb)
 
   (define (gap-buffer-forward! gb)
     (match-define (gap-buffer buf size pre post) gb)
@@ -41,7 +45,11 @@
 
   (define (gap-buffer-move-to! gb loc)
     (match-define (gap-buffer buf size pre post) gb)
-    (gap-buffer-move! gb (- loc pre)))
+    (gap-buffer-move! gb (- loc pre))
+    (eprintf "~a move to ~a/~a -> ~a\n"
+             (list pre post)
+             loc (- loc pre)
+             (list (gap-buffer-pre gb) (gap-buffer-post gb))))
 
   (define (gap-buffer-insert! gb c)
     (match-define (gap-buffer buf size pre post) gb)
@@ -59,7 +67,9 @@
     (define new-size (* old-size 2))
     (define new-buf (make-string new-size))
     (string-copy! new-buf 0 old-buf 0 pre)
-    (string-copy! new-buf (- new-size post 1) old-buf (- old-size post 1) old-size)
+    (string-copy! new-buf (- new-size post 1)
+                  old-buf (- old-size post 1)
+                  old-size)
     (set-gap-buffer-buf! gb new-buf)
     (set-gap-buffer-size! gb new-size))
 
@@ -91,6 +101,15 @@
     (for/list ([s*e (in-list line-ranges)])
       (substring buf (car s*e) (sub1 (cdr s*e)))))
 
+  (define (gap-buffer-move-to/rc! gb row col)
+    (match-define (gap-buffer buf size pre post) gb)
+    ;; xxx optimize
+    (define lines
+      (append (regexp-match-positions* line-rx buf 0 pre)
+              (regexp-match-positions* line-rx buf post)))
+    (match-define (cons start end) (list-ref lines row))
+    (gap-buffer-move-to! gb (+ start col)))
+
   (provide (all-defined-out)))
 
 (require (submod "." rune/lib/gap-buffer))
@@ -106,6 +125,10 @@
   (gap-buffer-line-cols (buffer:file-content b) r))
 (define (buffer-lines b)
   (gap-buffer-lines (buffer:file-content b)))
+(define (buffer-insert-at! b row col c)
+  (define gb (buffer:file-content b))
+  (gap-buffer-move-to/rc! gb row col)
+  (gap-buffer-insert! gb c))
 
 (struct cursor (row col) #:transparent)
 
@@ -489,6 +512,14 @@
                          (move-cursor 0 -1)]
                         [(rune-key '<down>)
                          (move-cursor 0 +1)]
+
+                        [(rune-key (? char? c))
+                         (match-define (focus ctxt v) (rstate-focus rs))
+                         (match-define (view (cursor row col) bid) v)
+                         (define b (rstate-buffer rs bid))
+                         (buffer-insert-at! b row col c)
+                         (hash-remove! buffer->bm bid)
+                         (move-cursor +1 0)]
 
                         [x
                          (eprintf "ignored ~s\n" x)
