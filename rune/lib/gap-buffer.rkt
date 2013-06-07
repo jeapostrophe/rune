@@ -3,24 +3,29 @@
          racket/list)
 (module+ test
   (require rackunit)
-  (define N 2)
-  (define M 5)
+  (define N 10)
+  (define M 10)
+  (define (random-char)
+    (integer->char (+ (char->integer #\A) (random 26))))
   (define (random-input)
-    (build-string M (λ (i) (integer->char (+ 64 (random 26)))))))
+    (build-string M (λ (i) (random-char)))))
 
 (define debugf void)
 
 (struct gap-buffer (buf buf-size gap-start gap-end) #:mutable)
 
-(define gap-size 8)
+(define current-gap-size (make-parameter 8))
+
+(define (make-indexed-string len)
+  (build-string len
+                (λ (i) (integer->char (+ (char->integer #\0)
+                                         (modulo i 10))))))
 
 (define (string->gap-buffer str)
   (define len (string-length str))
+  (define gap-size (current-gap-size))
   (define new-len (+ len gap-size))
-  (define new-str
-    (build-string new-len
-                  (λ (i) (integer->char (+ (char->integer #\0)
-                                           (modulo i 10))))))
+  (define new-str (make-indexed-string new-len))
   ;; The gap starts at the beginning, so we start the copy at gap-size
   (string-copy! new-str gap-size str)
   (gap-buffer new-str new-len 0 gap-size))
@@ -135,14 +140,55 @@
     (test-move-seq (random-input) (build-list N (λ (i) (random M))))))
 
 (define (gap-buffer-insert! gb c)
-  (match-define (gap-buffer buf buf-size gs ge) gb)
-  ;; If they are equal, then the gap is empty
-  (when (= gs ge)
-    (gap-buffer-expand! gb))
-  (define new-gs (gap-buffer-gap-start gb))
-  (string-set! buf new-gs c)
-  (eprintf "insert: Wrote ~a to ~a\n" c new-gs)
-  (gap-buffer-gap-start++ gb))
+  (let ()
+    (match-define (gap-buffer buf buf-size gs ge) gb)
+    ;; If they are equal, then the gap is empty
+    (when (= gs ge)
+      (gap-buffer-expand! gb)))
+  (let ()
+    (match-define (gap-buffer buf buf-size gs ge) gb)
+    (debugf "insert, before: ~a\n" buf)
+    (string-set! buf gs c)
+    (debugf "insert: Wrote ~a to ~a\n" c gs)
+    (debugf "insert, after: ~a\n" buf)
+    (gap-buffer-gap-start++ gb)))
+
+(module+ test
+  (define (lame-insert s where what)
+    (string-append (substring s 0 where)
+                   (string what)
+                   (substring s where)))
+
+  (define (test-insert-seq i inserts)
+    (define gb (string->gap-buffer i))
+    (for/fold ([last (format "~a" (gap-buffer-buf gb))]
+               [lame i])
+        ([ins (in-list inserts)])
+      (match-define (cons where what) ins)
+      (gap-buffer-move-to! gb where)
+      (gap-buffer-insert! gb what)
+      (define new (lame-insert lame where what))
+      (define msg (format "~a --~a,~a-- ~a"
+                          last
+                          where what
+                          (gap-buffer-buf gb)))
+      (check-equal? (gap-buffer->string gb) new msg)
+      (values msg new))
+    (void))
+
+  (parameterize ([current-gap-size 1])
+    (test-insert-seq "VXDCLHSOKN"
+                     '((9 . #\T)
+                       (7 . #\K))))
+
+  (parameterize ([current-gap-size 1])
+    (test-insert-seq "AB"
+                     (list (cons 1 #\O)
+                           (cons 0 #\Q))))
+
+  (for ([i (in-range N)])
+    (test-insert-seq (random-input)
+                     (build-list N (λ (i) (cons (random M) (random-char)))))))
 
 (define (gap-buffer-insert-string! gb s)
   (for ([c (in-string s)])
@@ -150,13 +196,18 @@
 
 (define (gap-buffer-expand! gb)
   (match-define (gap-buffer old-buf old-buf-size old-gs old-ge) gb)
+  (define gap-size (current-gap-size))
   (define new-size (+ old-buf-size gap-size))
-  (define new-buf (make-string new-size))
+  (define new-buf (make-indexed-string new-size))
   (string-copy! new-buf gap-size old-buf)
+  (debugf "~a -> ~a\n" old-buf new-buf)
   (set-gap-buffer-buf! gb new-buf)
   (set-gap-buffer-buf-size! gb new-size)
   (set-gap-buffer-gap-start! gb 0)
-  (set-gap-buffer-gap-end! gb gap-size))
+  (set-gap-buffer-gap-end! gb gap-size)
+  (gap-buffer-move-to! gb old-gs))
+
+;; xxx untested check point
 
 ;; xxx optimize?
 (define (regexp-match-count rx input start-pos [end-pos #f])
