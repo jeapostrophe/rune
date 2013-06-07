@@ -3,23 +3,24 @@
          racket/list
          racket/match
          racket/async-channel
-         rune/lib/gap-buffer)
+         (prefix-in z: rune/lib/buffer))
 
 (struct buffer ())
-(struct buffer:file (path content))
+(struct buffer:file (path [content #:mutable]))
 
 (define (path->buffer p)
-  (buffer:file p (string->gap-buffer (file->string p))))
+  (buffer:file p (z:string->buffer (file->string p))))
 (define (buffer-max-row b)
-  (gap-buffer-line-count (buffer:file-content b)))
+  (z:buffer-rows (buffer:file-content b)))
 (define (buffer-max-col b r)
-  (gap-buffer-line-cols (buffer:file-content b) r))
-(define (buffer-lines b)
-  (gap-buffer-lines (buffer:file-content b)))
+  (z:buffer-row-cols (buffer:file-content b) r))
+(define (buffer-line b r)
+  (z:buffer-row (buffer:file-content b) r))
 (define (buffer-insert-at! b row col c)
-  (define gb (buffer:file-content b))
-  (gap-buffer-move-to/rc! gb row col)
-  (gap-buffer-insert! gb c))
+  (define zb (buffer:file-content b))
+  (define nzb (z:buffer-insert-char zb row col c))
+  (set-buffer:file-content! b nzb)
+  (void))
 
 (struct cursor (row col) #:transparent)
 
@@ -214,8 +215,8 @@
 
                        (send bm-dc set-font the-font)
 
-                       (for ([l (in-list (buffer-lines b))]
-                             [row (in-naturals)])
+                       (for ([row (in-range max-row)])
+                         (define l (buffer-line b row))
                          (send bm-dc draw-text l 0 (* row char-height)))
 
                        bm)))
