@@ -106,12 +106,14 @@ Commands could search their body for overlays of a specific type
 
    Each "buffer" would get its own process to facilitate safe file
    modification
-** TODO implement gap buffer
+** DONE implement gap buffer
+   CLOSED: [2013-06-07 Fri 16:17]
 ** TODO what to do first?
    basic editor -> buffers/windows/frames -> multiple modes ->
    terminal -> shell -> org-mode -> canvas buffers (eog, evince) ->
    web buffers
 ** TODO internal: change key map to arrows
+** TODO scrolling with you
 ** TODO layout: full
 ** TODO layout: tall
 ** TODO layout: mirror tall
