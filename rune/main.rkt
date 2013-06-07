@@ -4,15 +4,108 @@
          racket/match
          racket/async-channel)
 
+(module rune/lib/gap-buffer racket/base
+  (require racket/match)
+  (struct gap-buffer (buf size pre post) #:mutable)
+
+  (define-syntax-rule (!gap-buffer-pre gb d)
+    (set-gap-buffer-pre! gb (+ d (gap-buffer-pre gb))))
+  (define-syntax-rule (!gap-buffer-post gb d)
+    (set-gap-buffer-post! gb (+ d (gap-buffer-post gb))))
+
+  (define (string->gap-buffer str)
+    ;; We copy because we mutate this string
+    (gap-buffer (string-copy str) (string-length str) 0 0))
+
+  (define (gap-buffer-forward! gb)
+    (match-define (gap-buffer buf size pre post) gb)
+    (when (> post 0)
+      (string-set! buf pre (string-ref buf (- size post)))
+      (!gap-buffer-pre gb +1)
+      (!gap-buffer-post gb +1)))
+
+  (define (gap-buffer-backward! gb)
+    (match-define (gap-buffer buf size pre post) gb)
+    (when (> pre 0)
+      (define c (string-ref buf (- pre 1)))
+      (string-set! buf (- size post 1) c)
+      (!gap-buffer-post gb +1)
+      (!gap-buffer-pre gb -1)))
+
+  (define (gap-buffer-move! gb d)
+    (if (positive? d)
+      (for ([i (in-range d)])
+        (gap-buffer-forward! gb))
+      (for ([i (in-range (- d))])
+        (gap-buffer-backward! gb))))
+
+  (define (gap-buffer-move-to! gb loc)
+    (match-define (gap-buffer buf size pre post) gb)
+    (gap-buffer-move! gb (- loc pre)))
+
+  (define (gap-buffer-insert! gb c)
+    (match-define (gap-buffer buf size pre post) gb)
+    (when (= (+ pre post) size)
+      (gap-buffer-expand! gb))
+    (string-set! buf pre c)
+    (!gap-buffer-pre gb +1))
+
+  (define (gap-buffer-insert-string! gb s)
+    (for ([c (in-string s)])
+      (gap-buffer-insert! gb c)))
+
+  (define (gap-buffer-expand! gb)
+    (match-define (gap-buffer old-buf old-size pre post) gb)
+    (define new-size (* old-size 2))
+    (define new-buf (make-string new-size))
+    (string-copy! new-buf 0 old-buf 0 pre)
+    (string-copy! new-buf (- new-size post 1) old-buf (- old-size post 1) old-size)
+    (set-gap-buffer-buf! gb new-buf)
+    (set-gap-buffer-size! gb new-size))
+
+  ;; xxx optimize?
+  (define (regexp-match-count rx input start-pos [end-pos #f])
+    (length (regexp-match-positions* rx input start-pos end-pos)))
+
+  (define line-rx #rx"[^\n]*\n")
+  (define (gap-buffer-line-count gb)
+    (match-define (gap-buffer buf size pre post) gb)
+    (+ (regexp-match-count line-rx buf 0 pre)
+       (regexp-match-count line-rx buf post)))
+
+  (define (gap-buffer-line-cols gb line)
+    (match-define (gap-buffer buf size pre post) gb)
+    ;; xxx optimize
+    (define lines
+      (append (regexp-match-positions* line-rx buf 0 pre)
+              (regexp-match-positions* line-rx buf post)))
+    (match-define (cons start end) (list-ref lines line))
+    (sub1 (- end start)))
+
+  (define (gap-buffer-lines gb)
+    (match-define (gap-buffer buf size pre post) gb)
+    ;; xxx lazy
+    (define line-ranges
+      (append (regexp-match-positions* line-rx buf 0 pre)
+              (regexp-match-positions* line-rx buf post)))
+    (for/list ([s*e (in-list line-ranges)])
+      (substring buf (car s*e) (sub1 (cdr s*e)))))
+
+  (provide (all-defined-out)))
+
+(require (submod "." rune/lib/gap-buffer))
+
 (struct buffer ())
 (struct buffer:file (path content))
 
 (define (path->buffer p)
-  (buffer:file p (file->lines p)))
+  (buffer:file p (string->gap-buffer (file->string p))))
 (define (buffer-max-row b)
-  (max 0 (sub1 (length (buffer:file-content b)))))
+  (gap-buffer-line-count (buffer:file-content b)))
 (define (buffer-max-col b r)
-  (max 0 (sub1 (string-length (list-ref (buffer:file-content b) r)))))
+  (gap-buffer-line-cols (buffer:file-content b) r))
+(define (buffer-lines b)
+  (gap-buffer-lines (buffer:file-content b)))
 
 (struct cursor (row col) #:transparent)
 
@@ -191,7 +284,7 @@
                        (define max-row (buffer-max-row b))
                        (define max-col
                          (for/fold ([mc 0])
-                             ([r (in-range (add1 max-row))])
+                             ([r (in-range max-row)])
                            (max mc (buffer-max-col b r))))
 
                        (define bm
@@ -203,7 +296,7 @@
 
                        (send bm-dc set-font the-font)
 
-                       (for ([l (in-list (buffer:file-content b))]
+                       (for ([l (in-list (buffer-lines b))]
                              [row (in-naturals)])
                          (send bm-dc draw-text l 0 (* row char-height)))
 

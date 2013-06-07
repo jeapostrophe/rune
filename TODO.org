@@ -1,5 +1,7 @@
 * Rune
 
+Test λ
+
 Rune is an "operating system" and user interface. It performs the
 jobs of:
 - emacs
@@ -87,6 +89,8 @@ Commands could search their body for overlays of a specific type
    http://yi-editor.blogspot.com/2009/03/lazy-and-incremental-parsing-paper.html
 
    http://yi-editor.blogspot.com/2008/11/incremental-parsing-in-yi.html
+** TODO think about emacsy
+   http://shanecelis.github.io/emacsy/2013/06/05/google-summer-of-code-2013-emacsy/
 ** TODO plan structure
    like a microkernel...
    - state manager
@@ -107,6 +111,24 @@ Commands could search their body for overlays of a specific type
    basic editor -> buffers/windows/frames -> multiple modes ->
    terminal -> shell -> org-mode -> canvas buffers (eog, evince) ->
    web buffers
+** TODO internal: change key map to arrows
+** TODO layout: full
+** TODO layout: tall
+** TODO layout: mirror tall
+** TODO layout: show top bar
+** TODO layout: show mode line
+** TODO meta: implement minibuffer
+** TODO command: duplicate view
+** TODO command: view list
+** TODO command: switch buffer of view (by name? by buffer list?)
+** TODO command: have focus operations wrap around
+** TODO command: change "main" window for tall/mirror tall (vs focused)
+** TODO command: close view
+** TODO command: change layout
+** TODO command: jump to different layout (Cmd-<numeral>)
+** TODO command: edit files
+** TODO command: save files
+** TODO meta: detect file changed on disk
 ** TODO terminal
    Make every command invocation create a new set of buffers that is
    "spliced" into the terminal buffer, so that you get a record the
