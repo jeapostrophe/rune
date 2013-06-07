@@ -109,7 +109,9 @@
               (m    get-meta-down "M")
               (m   get-shift-down "S")))
     (define mods?
-      (not (string=? "" mods)))
+      (and (not (string=? "" mods))
+           (not (and (string=? "S-" mods)
+                     (char? kc)))))
     (define kc-e
       (if (symbol? kc)
         (string->symbol (format "<~a>" kc))
