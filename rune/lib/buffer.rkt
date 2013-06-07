@@ -4,6 +4,9 @@
          racket/string
          racket/contract)
 
+;; xxx optimizations
+;; -- append-reverse
+
 (struct row-focus (pre ri cf post) #:transparent)
 (struct col-focus (pre ci post) #:transparent)
 
@@ -33,8 +36,7 @@
      (error 'buffer-move-row-forward "Fail: ~e" b)]))
 
 (define (buffer-move-row b row)
-  (match-define (row-focus rows-before row-n
-                           (col-focus cols-before col-n cols-after)
+  (match-define (row-focus rows-before row-n cf
                            rows-after)
                 b)
   (define how-many (- row-n row))
@@ -56,18 +58,22 @@
                            rows-after)
                 b)
   (define how-many (- col-n col))
+  (define (split-at* label l i)
+    (unless (<= i (length l))
+      (error 'buffer-move-col "~e" (list label b col l how-many i)))
+    (split-at l i))
   (cond
     ;; Backward
     [(positive? how-many)
-     (define-values (new-before new-after) (split-at cols-before how-many))
+     (define-values (new-after new-before) (split-at* "back" cols-before how-many))
      (row-focus rows-before row-n
-                (col-focus new-before col (append new-after cols-after))
+                (col-focus new-before col (append (reverse new-after) cols-after))
                 rows-after)]
     ;; Forward
     [(negative? how-many)
-     (define-values (new-before new-after) (split-at cols-after how-many))
+     (define-values (new-before new-after) (split-at* "forward" cols-after (abs how-many)))
      (row-focus rows-before row-n
-                (col-focus (append new-before cols-before) col new-after)
+                (col-focus (append (reverse new-before) cols-before) col new-after)
                 rows-after)]
     [else
      b]))
@@ -77,11 +83,11 @@
 
 (define (buffer-insert-char b row col c)
   (match-define (row-focus rows-before row-n
-                           (and cf (col-focus cols-before col-n cols-after))
+                           (col-focus cols-before col-n cols-after)
                            rows-after)
                 (buffer-move b row col))
   (if (char=? #\newline c)
-    (row-focus (list* (col-focus->string cf) rows-before) (add1 row-n)
+    (row-focus (list* (col-focus->string (col-focus cols-before col-n empty)) rows-before) (add1 row-n)
                (col-focus empty 0 cols-after)
                rows-after)
     (row-focus rows-before row-n
@@ -105,13 +111,17 @@
 
 (define (buffer-row b r)
   (match-define (row-focus pre rowi rowic post) b)
+  (define (list-ref* label l i)
+    (unless (< i (length l))
+      (error 'buffer-row "~e" (list r pre rowi post label l i)))
+    (list-ref l i))
   (cond
     [(< r rowi)
-     (list-ref pre (- rowi r 1))]
+     (list-ref* "pre" pre (- rowi r 1))]
     [(= r rowi)
      (col-focus->string rowic)]
     [else
-     (list-ref post (- r rowi))]))
+     (list-ref* "post" post (- r rowi 1))]))
 
 (define (buffer-row-cols b r)
   (string-length (buffer-row b r)))
@@ -146,38 +156,38 @@
 
 (define (buffer-delete-previous b row col)
   (match (buffer-move b row col)
-    [(row-focus (cons last-row rows-before) row-n
-                (col-focus (list) 0 cols-after)
+    [(row-focus (cons last-row rows-before) (== row)
+                (col-focus (list) (and 0 (== col)) cols-after)
                 rows-after)
      (values #\newline
-             (row-focus rows-before (sub1 row-n)
+             (row-focus rows-before (sub1 row)
                         (col-focus (reverse (string->list last-row)) (string-length last-row) cols-after)
                         rows-after))]
-    [(row-focus rows-before row-n
-                (col-focus (cons deleted cols-before) col-n cols-after)
+    [(row-focus rows-before (== row)
+                (col-focus (cons deleted cols-before) (== col) cols-after)
                 rows-after)
      (values deleted
-             (row-focus rows-before row-n
-                        (col-focus cols-before (sub1 col-n) cols-after)
+             (row-focus rows-before row
+                        (col-focus cols-before (sub1 col) cols-after)
                         rows-after))]
     [_
      (error 'buffer-delete-previous "Fail: ~e ~e ~e" b row col)]))
 
 (define (buffer-delete-next b row col)
   (match (buffer-move b row col)
-    [(row-focus rows-before row-n
-                (col-focus cols-before col-n (list))
+    [(row-focus rows-before (== row)
+                (col-focus cols-before (== col) (list))
                 (cons next-row rows-after))
      (values #\newline
-             (row-focus rows-before row-n
-                        (col-focus cols-before col-n (string->list next-row))
+             (row-focus rows-before row
+                        (col-focus cols-before col (string->list next-row))
                         rows-after))]
-    [(row-focus rows-before row-n
-                (col-focus cols-before col-n (cons deleted cols-after))
+    [(row-focus rows-before (== row)
+                (col-focus cols-before (== col) (cons deleted cols-after))
                 rows-after)
      (values deleted
-             (row-focus rows-before row-n
-                        (col-focus cols-before col-n cols-after)
+             (row-focus rows-before row
+                        (col-focus cols-before col cols-after)
                         rows-after))]
     [_
      (error 'buffer-delete-next "Fail: ~e ~e ~e" b row col)]))
