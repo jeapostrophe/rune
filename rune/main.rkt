@@ -420,6 +420,20 @@
                                     (view (cursor 2 0) 0)))
                             empty)
                            (view (cursor 3 0) 0))
-                    (focus (ctxt:top)
-                           (view (cursor 1 0) 0))))
+                    (focus (ctxt:layer
+                            (ctxt:top)
+                            'horizontal
+                            (list)
+                            (list
+                             (focus (ctxt:layer
+                                     (ctxt:top)
+                                     'vertical
+                                     (list
+                                      (focus (ctxt:top)
+                                             (view (cursor 2 0) 0)))
+                                     empty)
+                                    (view (cursor 3 0) 0))
+                             (focus (ctxt:top)
+                                    (view (cursor 1 0) 0))))
+                           (view (cursor 0 0) 0))))
                   (view (cursor 0 0) 0)))))
