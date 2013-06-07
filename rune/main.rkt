@@ -5,36 +5,46 @@
          racket/async-channel)
 
 (module rune/lib/gap-buffer racket/base
-  (require racket/match)
-  (struct gap-buffer (buf size pre post) #:mutable)
+  (require racket/match
+           racket/list)
+  (struct gap-buffer (buf buf-size gap-start gap-end) #:mutable)
 
-  (define-syntax-rule (!gap-buffer-pre gb d)
-    (set-gap-buffer-pre! gb (+ d (gap-buffer-pre gb))))
-  (define-syntax-rule (!gap-buffer-post gb d)
-    (set-gap-buffer-post! gb (+ d (gap-buffer-post gb))))
+  (define gap-size 256)
 
   (define (string->gap-buffer str)
     (define len (string-length str))
-    (define new-len (+ len len))
+    (define new-len (+ len gap-size))
     (define new-str (make-string new-len))
-    (string-copy! new-str len str)
-    (define gb (gap-buffer new-str new-len 0 len))
-    gb)
+    ;; The gap starts at the beginning, so we start the copy at gap-size
+    (string-copy! new-str gap-size str)
+    (gap-buffer new-str new-len 0 gap-size))
+
+  (define-syntax-rule (gap-buffer-gap-start++ gb)
+    (set-gap-buffer-gap-start! gb (add1 (gap-buffer-gap-start gb))))
+  (define-syntax-rule (gap-buffer-gap-end++ gb)
+    (set-gap-buffer-gap-end! gb (add1 (gap-buffer-gap-end gb))))
+  (define-syntax-rule (gap-buffer-gap-start-- gb)
+    (set-gap-buffer-gap-start! gb (sub1 (gap-buffer-gap-start gb))))
+  (define-syntax-rule (gap-buffer-gap-end-- gb)
+    (set-gap-buffer-gap-end! gb (sub1 (gap-buffer-gap-end gb))))
 
   (define (gap-buffer-forward! gb)
-    (match-define (gap-buffer buf size pre post) gb)
-    (when (> post 0)
-      (string-set! buf pre (string-ref buf (- size post)))
-      (!gap-buffer-pre gb +1)
-      (!gap-buffer-post gb +1)))
+    (match-define (gap-buffer buf buf-size gs ge) gb)
+    ;; Copy what is at ge to gs
+    (define c (string-ref buf ge))
+    (eprintf "forward: Copied ~a from ~a to ~a\n" c ge gs)
+    (string-set! buf gs c)
+    (gap-buffer-gap-start++ gb)
+    (gap-buffer-gap-end++ gb))
 
   (define (gap-buffer-backward! gb)
-    (match-define (gap-buffer buf size pre post) gb)
-    (when (> pre 0)
-      (define c (string-ref buf (- pre 1)))
-      (string-set! buf (- size post 1) c)
-      (!gap-buffer-post gb +1)
-      (!gap-buffer-pre gb -1)))
+    (match-define (gap-buffer buf buf-size gs ge) gb)
+    ;; Copy what is at gs to ge
+    (define c (string-ref buf (sub1 gs)))
+    (eprintf "backward: Copied ~a from ~a to ~a\n" c (sub1 gs) ge)
+    (string-set! buf ge c)
+    (gap-buffer-gap-start-- gb)
+    (gap-buffer-gap-end-- gb))
 
   (define (gap-buffer-move! gb d)
     (if (positive? d)
@@ -44,71 +54,107 @@
         (gap-buffer-backward! gb))))
 
   (define (gap-buffer-move-to! gb loc)
-    (match-define (gap-buffer buf size pre post) gb)
-    (gap-buffer-move! gb (- loc pre))
-    (eprintf "~a move to ~a/~a -> ~a\n"
-             (list pre post)
-             loc (- loc pre)
-             (list (gap-buffer-pre gb) (gap-buffer-post gb))))
+    (match-define (gap-buffer buf buf-size gs ge) gb)
+    ;; works before below first line
+    (define d 
+      (if (<= loc gs)
+        (- loc gs)        
+        (- (add1 loc) ge)))
+    (eprintf "~a move to ~a/~a\n"
+             (list gs ge (- ge gs))
+             loc d)
+    (gap-buffer-move! gb d)
+    (eprintf "-> ~a\n"             
+             (list (gap-buffer-gap-start gb) (gap-buffer-gap-end gb)
+                   (- (gap-buffer-gap-end gb) (gap-buffer-gap-start gb)))))
 
   (define (gap-buffer-insert! gb c)
-    (match-define (gap-buffer buf size pre post) gb)
-    (when (= (+ pre post) size)
+    (match-define (gap-buffer buf buf-size gs ge) gb)
+    ;; If they are equal, then the gap is empty
+    (when (= gs ge)
       (gap-buffer-expand! gb))
-    (string-set! buf pre c)
-    (!gap-buffer-pre gb +1))
+    (define new-gs (gap-buffer-gap-start gb))
+    (string-set! buf new-gs c)
+    (eprintf "insert: Wrote ~a to ~a\n" c new-gs)
+    (gap-buffer-gap-start++ gb))
 
   (define (gap-buffer-insert-string! gb s)
     (for ([c (in-string s)])
       (gap-buffer-insert! gb c)))
 
   (define (gap-buffer-expand! gb)
-    (match-define (gap-buffer old-buf old-size pre post) gb)
-    (define new-size (* old-size 2))
+    (match-define (gap-buffer old-buf old-buf-size old-gs old-ge) gb)
+    (define new-size (+ old-buf-size gap-size))
     (define new-buf (make-string new-size))
-    (string-copy! new-buf 0 old-buf 0 pre)
-    (string-copy! new-buf (- new-size post 1)
-                  old-buf (- old-size post 1)
-                  old-size)
+    (string-copy! new-buf gap-size old-buf)
     (set-gap-buffer-buf! gb new-buf)
-    (set-gap-buffer-size! gb new-size))
+    (set-gap-buffer-buf-size! gb new-size)
+    (set-gap-buffer-gap-start! gb 0)
+    (set-gap-buffer-gap-end! gb gap-size))
 
   ;; xxx optimize?
   (define (regexp-match-count rx input start-pos [end-pos #f])
     (length (regexp-match-positions* rx input start-pos end-pos)))
 
-  (define line-rx #rx"[^\n]*\n")
-  (define (gap-buffer-line-count gb)
+  (define newline-rx #rx"\n")
+  (define (gap-buffer-newline-offsets gb)
     (match-define (gap-buffer buf size pre post) gb)
-    (+ (regexp-match-count line-rx buf 0 pre)
-       (regexp-match-count line-rx buf post)))
+    (define before (regexp-match-positions* newline-rx buf 0 pre))
+    (define after (regexp-match-positions* newline-rx buf post))
+    (if (and (empty? before) (empty? after))
+      ;; xxx fix
+      (error 'gap-buffer-newline-offsets "No newline!")
+      (map car (append before after))))
+
+  (define (gap-buffer-line-count gb)
+    (length (gap-buffer-newline-offsets gb)))
+
+  (define (gap-buffer-line-ranges gb)
+    (match-define (gap-buffer buf size pre post) gb)
+    (define last 0)
+    (define past-gap? #f)
+    (for/list ([actual-end (gap-buffer-newline-offsets gb)])
+      (define end actual-end)
+      (unless past-gap?
+        (when (<= post end)
+          (set! end (list pre post end))
+          (set! past-gap? #t)))
+      (begin0 (cons last end)
+              (set! last actual-end))))
 
   (define (gap-buffer-line-cols gb line)
-    (match-define (gap-buffer buf size pre post) gb)
-    ;; xxx optimize
-    (define lines
-      (append (regexp-match-positions* line-rx buf 0 pre)
-              (regexp-match-positions* line-rx buf post)))
-    (match-define (cons start end) (list-ref lines line))
-    (sub1 (- end start)))
+    (match (list-ref (gap-buffer-line-ranges gb) line)
+      [(list start mid-start mid-end end)
+       (sub1 (+ (- mid-start start) (- end mid-end)))]
+      [(cons start end)
+       (sub1 (- end start))]))
 
   (define (gap-buffer-lines gb)
-    (match-define (gap-buffer buf size pre post) gb)
-    ;; xxx lazy
-    (define line-ranges
-      (append (regexp-match-positions* line-rx buf 0 pre)
-              (regexp-match-positions* line-rx buf post)))
-    (for/list ([s*e (in-list line-ranges)])
-      (substring buf (car s*e) (sub1 (cdr s*e)))))
+    (match-define (gap-buffer buf _ _ _) gb)
+    (for/list ([range (in-list (gap-buffer-line-ranges gb))])
+      (match range
+        [(list start mid-start mid-end end)
+         (string-append (substring buf start mid-start)
+                        (substring buf mid-end end))]
+        [(cons start end)
+         (substring buf start end)])))
 
   (define (gap-buffer-move-to/rc! gb row col)
-    (match-define (gap-buffer buf size pre post) gb)
-    ;; xxx optimize
-    (define lines
-      (append (regexp-match-positions* line-rx buf 0 pre)
-              (regexp-match-positions* line-rx buf post)))
-    (match-define (cons start end) (list-ref lines row))
-    (gap-buffer-move-to! gb (+ start col)))
+    (printf "moving to ~a,~a\n" row col)
+    (match (list-ref (gap-buffer-line-ranges gb) row)
+      [(list start mid-start mid-end end)
+       (define before-mid (- mid-start start))
+       (printf "line split across gap: ~e\n" 
+               (list start mid-start mid-end end before-mid))
+       (cond
+         [(< col before-mid)          
+          (printf "before mid\n")
+          (gap-buffer-move-to! gb (+ start col 1))]
+         [else
+          (printf "after mid\n")
+          (gap-buffer-move-to! gb (+ mid-start (- col before-mid)))])]
+      [(cons start end)
+       (gap-buffer-move-to! gb (+ start col))]))
 
   (provide (all-defined-out)))
 
@@ -136,18 +182,22 @@
   (min (max lo x) hi))
 (define (cursor-move a-c dc dr b)
   (match-define (cursor r c) a-c)
-  (define nr (clamp 0 (+ r dr) (buffer-max-row b)))
-  (define maybe-nc (+ c dc))
   (cond
-    [(< maybe-nc 0)
-     ;; Move back one row and to the far right
-     (define nnr (max 0 (sub1 nr)))
-     (cursor nnr (buffer-max-col b nnr))]
-    [(< (buffer-max-col b nr) maybe-nc)
-     (define nnr (min (add1 nr) (buffer-max-row b)))
-     (cursor nnr 0)]
-    [else
-     (cursor nr maybe-nc)]))
+    [(zero? dr)
+     (define maybe-nc (+ c dc))
+     (cond
+       [(< maybe-nc 0)
+        ;; Move back one row and to the far right
+        (define nr (max 0 (sub1 r)))
+        (cursor nr (buffer-max-col b nr))]
+       [(< (buffer-max-col b r) maybe-nc)
+        (define nr (min (add1 r) (buffer-max-row b)))
+        (cursor nr 0)]
+       [else
+        (cursor r maybe-nc)])]
+    [(zero? dc)
+     (define nr (clamp 0 (+ r dr) (buffer-max-row b)))
+     (cursor nr (clamp 0 c (buffer-max-col b nr)))]))
 
 (struct view (cursor buffer))
 
