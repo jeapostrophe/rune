@@ -3,7 +3,7 @@
          racket/list
          racket/match
          racket/async-channel
-         (prefix-in o: rune/lib/overlay)
+         (prefix-in o: rune/lib/overlay2)
          (prefix-in z: rune/lib/buffer))
 
 (struct buffer ())
@@ -254,10 +254,10 @@
                (for ([char (in-string l)]
                      [col (in-naturals)])
 
-                 ;; xxx if I reall look it up: 7000ms
                  (define os
                    (if #t
-                     ;; real: 7000ms
+                     ;; slow (list): 7000ms
+                     ;; fast (hash): 200-500 ms
                      (o:odb-hash overlays (o:rect:point bid row col))
                      ;; fake:  600ms
                      (hasheq 'highlight? (if (zero? (random 2)) #t #f))))
