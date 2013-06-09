@@ -3,6 +3,7 @@
          racket/list
          racket/match
          racket/async-channel
+         (prefix-in o: rune/lib/overlay)
          (prefix-in z: rune/lib/buffer))
 
 (struct buffer ())
@@ -174,6 +175,8 @@
          racket/class)
 
 (define buffer->bm (make-hasheq))
+;; xxx hack
+(define buffer->os (make-hasheq))
 
 (define (rstate-render! gf rs)
   (define cursor-outline-c (make-object color% 0 0 255 1.0))
@@ -210,30 +213,62 @@
           (set-gui-frame-label! gf (buffer:file-path b)))
 
         (define b-bm
-          (hash-ref! buffer->bm bid
-                     (λ ()
-                       (local-require (only-in racket/gui/base make-screen-bitmap))
+          (hash-ref!
+           buffer->bm bid
+           (λ ()
+             (local-require (only-in racket/gui/base make-screen-bitmap))
 
-                       (define max-row (buffer-max-row b))
-                       (define max-col
-                         (for/fold ([mc 0])
-                             ([r (in-range max-row)])
-                           (max mc (buffer-max-col b r))))
+             (define max-row (buffer-max-row b))
+             (define max-col
+               (for/fold ([mc 0])
+                   ([r (in-range max-row)])
+                 (max mc (buffer-max-col b r))))
 
-                       (define bm
-                         (make-screen-bitmap
-                          (inexact->exact (ceiling (* max-col char-width)))
-                          (inexact->exact (ceiling (* max-row char-height)))))
-                       (define bm-dc
-                         (send bm make-dc))
+             (define overlays
+               (hash-ref!
+                buffer->os bid
+                (λ ()
+                  (for/fold ([odb o:empty-odb])
+                      ([row (in-range max-row)])
+                    (for/fold ([odb odb])
+                        ([col (in-range (buffer-max-col b row))])
+                      (if (zero? (random 2))
+                        (o:odb-set odb (o:rect:point bid row col) 'highlight? #t)
+                        odb))))))
 
-                       (send bm-dc set-font the-font)
+             (define bm
+               (make-screen-bitmap
+                (inexact->exact (ceiling (* max-col char-width)))
+                (inexact->exact (ceiling (* max-row char-height)))))
+             (define bm-dc
+               (send bm make-dc))
 
-                       (for ([row (in-range max-row)])
-                         (define l (buffer-line b row))
-                         (send bm-dc draw-text l 0 (* row char-height)))
+             (send bm-dc set-font the-font)
 
-                       bm)))
+             (for ([row (in-range max-row)])
+               (define l (buffer-line b row))
+
+               ;; xxx line at once: 178ms
+               ;; (send bm-dc draw-text l 0 (* row char-height))
+
+               (for ([char (in-string l)]
+                     [col (in-naturals)])
+
+                 ;; xxx if I reall look it up: 7000ms
+                 (define os
+                   (if #t
+                     ;; real: 7000ms
+                     (o:odb-hash overlays (o:rect:point bid row col))
+                     ;; fake:  600ms
+                     (hasheq 'highlight? (if (zero? (random 2)) #t #f))))
+                 (send bm-dc set-text-foreground
+                       (if (hash-ref os 'highlight? #f)
+                         "red"
+                         "black"))
+                 (send bm-dc draw-text (string char)
+                       (* col char-width) (* row char-height))))
+
+             bm)))
 
         (send dc draw-bitmap-section b-bm
               (+ x hmargin) (+ y vmargin)

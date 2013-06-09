@@ -57,7 +57,6 @@ Commands could search their body for overlays of a specific type
 (such as "how many words are spelled wrong?")
 
 * Layout Tree
-
   A view is a cursor plus a buffer---it represents an active buffer.
 
   A layout is n-ary tree where branches have "styles" and the leaves
@@ -81,6 +80,8 @@ Commands could search their body for overlays of a specific type
 
  A focus is a zipper of a layout.
 * Tasks
+** DONE implement gap buffer
+   CLOSED: [2013-06-07 Fri 16:17]
 ** TODO Think about emacs design
    http://en.wikipedia.org/wiki/Emacs
 ** TODO Think about Yi design
@@ -106,14 +107,116 @@ Commands could search their body for overlays of a specific type
 
    Each "buffer" would get its own process to facilitate safe file
    modification
-** DONE implement gap buffer
-   CLOSED: [2013-06-07 Fri 16:17]
+** TODO look at dbus and 9p
+
+   The Plan 9 system is very interesting in its UNIX-ness. I like the
+   idea of having each tool do a very specific and simple task. 
+
+   For instance, the idea of in rune having each thing be either a
+   file or a process is neat and could work...
+   - the runefs would have files representing each of the buffers,
+     and all of these would be backed on the filesystem, but only
+     some of them would also be associated with named thing on the
+     fs. When you turn on rune, you get its files and you could
+     explicitly sync them to the OS with a save operation.
+
+     file-load/os : path -> file-handle
+     file-save/os! : file-handle path -> void
+
+     file-rows : fh -> rows
+     file-row : fh row -> string
+     file-row-cols : fh row -> cols
+     file-row-col : fh row col -> string
+
+   - files that are opened by someone would have a zipper associated
+     with them for random row/col modification, with the interface:
+
+     file-insert-at! : fh row col char -> void
+     file-delete-at! : fh row col -> void
+
+   - each file would have an overlay database of rectangles with the
+     interface
+
+     rect = row X col X width X height
+
+     file-overlay-ref : fh rect key -> val
+     file-overlay-set! : fh rect key val -> void
+
+   - processes could subscribe to events such as
+
+     (on-file-change overlay-key overlay-value-pattern)
+
+
+  concerns...
+  - is row/col the best interface for the kind of text I deal with?
+    racket source and org-mode are structured.
+  - what if a file had an associated "structurer" where a structure's
+    job is to produce a tree. A plain-text structure produces a list
+    of lines, a programming language might produce a list of tokens
+    or an ast-like thing
+
+    --
+
+    How can you unify a text editor, a Web view, and the window manager?
+    - The view is ultimately a bitmap -> eyes function.
+    - If each thing can produce a bitmap, then they can be composed
+      with a final call to the view.
+    - More complicated: the view may push back down its width X height
+    
+    How can you unify window manager key events, application key
+    events, minibuffer commands, and shell commands?
+    - A single key evaluator loop can capture commands and dispatch
+      them to the right place. This can be a nested process where some
+      receivers accumulate results before dispatching themselves.
+
+    How can you unify file buffers, Web sites, temporary content on
+    the output of commands?
+    - A virtual filesystem of byte content
+
+    How can you unify the interface of, but separate the
+    implementation of, a spell checker, a syntax highlighter, a
+    compile error hightlighter?
+    - Overlay "observers" as described above?
+
+    How can you unify the implementation of a normal text editor, a
+    Web browser, and a "live" text interface like org-mode, miro, mail
+    reader, irc client, etc?
+    - Emacs has complicated key handlers that look at their context
+      and do stuff
+    - You could attach overlay information that did the same thing as
+      emacs
+
+    A very different approach...
+    - Make a gui system where you can create text windows (and it
+      lays them out) and then listen for events, which could be keys
+      or could be other events
+    - The gui system would be in charge of laying out these windows
+      (really it would just make one os window) and then listening for
+      the input. 
+    - some commands it would capture (like moving focus around) and
+      others it would deliver to the application. commands like M-x
+      might pop up a new view with handle for the original
+      view/program (to sent it a message) commands like C-` would also
+      get that handle, but would take it over and display on it.
+    - in this world, a buffer is like a view to a program which
+      interprets events its own way. each time you open a file, a new
+      program would run (normally in the background) and stay running
+      handling input to that file.
+    - such programs would communicate with the os to arrange to only
+      open them uniquely once and have them save their state so they
+      could be restarted later
+    - a single terminal session would be a program like this too
+
+** TODO paredit?
 ** TODO what to do first?
    basic editor -> buffers/windows/frames -> multiple modes ->
    terminal -> shell -> org-mode -> canvas buffers (eog, evince) ->
    web buffers
 ** TODO internal: change key map to arrows
-** TODO scrolling with you
+** TODO view display adjusting to cursor
+** TODO detach cursor from view and put on buffer somehow
+   so that if a buffer doesn't have any cursor when you create a new
+   view of it, you get the last cursor
 ** TODO layout: full
 ** TODO layout: tall
 ** TODO layout: mirror tall
@@ -121,7 +224,7 @@ Commands could search their body for overlays of a specific type
 ** TODO layout: show mode line
 ** TODO meta: implement minibuffer
 ** TODO command: duplicate view
-** TODO command: view list
+** TODO command: view buffer list
 ** TODO command: switch buffer of view (by name? by buffer list?)
 ** TODO command: have focus operations wrap around
 ** TODO command: change "main" window for tall/mirror tall (vs focused)
@@ -136,6 +239,12 @@ Commands could search their body for overlays of a specific type
    "spliced" into the terminal buffer, so that you get a record the
    entire interaction that can be redisplayed in the future (like
    always "tee"ing)
+** TODO opengl rendering
+   how to get all the font characters? (exp/font.rkt)
+   but maybe just scan the current file set and dynamically create
+   the atlas?
+** TODO compositing
+   https://github.com/chjj/compton/blob/master/src/opengl.c
 ** TODO automatically increase font-size so that 80chars fit width-wise and no more
 ** TODO embed chromium
    CEF3 seems to do it
