@@ -168,9 +168,6 @@
 
 (require (submod "." rune/gui/racket))
 
-(define (focus-path-rest fp i)
-  (and fp (= i (first fp)) (rest fp)))
-
 (require racket/draw
          racket/class)
 

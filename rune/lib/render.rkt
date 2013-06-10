@@ -1,5 +1,7 @@
 #lang racket/base
 (require ffi/unsafe)
+(module+ test
+  (require rackunit))
 
 ;; Basic idea:
 
@@ -22,7 +24,7 @@
 ;; 2. Using the fixed-function pipeline for this is easy, but it
 ;; requires a lot of texture swapping. It doesn't seem wise to read
 ;; the textures back into the CPU to create a new atlas for every
-;; frame, so the swapping is probably the best option. 
+;; frame, so the swapping is probably the best option.
 
 ;; UNLESS, I can render to a texture array. But, can you render to a
 ;; texture array?  Are there enough for a very large number of
@@ -33,19 +35,16 @@
 
 (define-cstruct _char-info
   (;; location (monospace = all w/h the same)
-   [row _uint16]
-   [col _uint16]
+   [row _uint16] ;; 65k lines should be enough for anyone
+   [col _uint8] ;; more than 80 cols is immoral anyways
 
-   ;; foreground & background colors
-   [fr _uint8]
-   [fg _uint8]
-   [fb _uint8]
-   [br _uint8]
-   [bg _uint8]
-   [bb _uint8]
-   
-   ;; which character?
-   [ci _uint16]
+   ;; or just 16 colors on each [solarized]
+   [f*b _uint8]
+
+   ;; which character? [I only found 118 unique characters in every
+   ;; text document on my system, except for some Japanese notes and a
+   ;; file of all unicode characters]
+   [ci _uint8]
 
    ;; vertex id
    [horiz _sint8]
@@ -53,12 +52,49 @@
 
 (define DrawnMult 6)
 (module+ test
-  (define vert-size (ctype-sizeof _char-info))
-  (eprintf "One vert is ~a bytes\n" vert-size)
-  (eprintf "One char is ~a verts\n" DrawnMult)
-  (eprintf "One char is ~a bytes\n" (* DrawnMult vert-size))
-  (eprintf "One char @ 60 FPS is ~a bytes per second\n" (* 60 DrawnMult vert-size))
-  (eprintf "Intel HD Graphics 4000 would give ~a chars at 60 FPS (considering only memory)\n"
-           (real->decimal-string
-            (/ (* 25.6 1024 1024 1024)
-               (* 60 DrawnMult vert-size)))))
+  (define (print-bandwidth label ctype)
+    (define vert-size (ctype-sizeof ctype))
+    (eprintf "One ~a vert is ~a bytes\n" label vert-size)
+    (eprintf "One ~a is ~a verts\n" label DrawnMult)
+    (eprintf "One ~a is ~a bytes\n" label (* DrawnMult vert-size))
+    (eprintf "One ~a @ 60 FPS is ~a bytes per second\n" label (* 60 DrawnMult vert-size))
+    (eprintf "Intel HD Graphics 4000 would give ~a ~a at 60 FPS (considering only memory)\n"
+             (real->decimal-string
+              (/ (* 25.6 1024 1024 1024)
+                 (* 60 DrawnMult vert-size)))
+             label)
+    (eprintf "\n"))
+
+  (print-bandwidth "char" _char-info))
+
+(define (nibbles hi lo)
+  (+ (arithmetic-shift hi 4) lo))
+(define (nibble-lo n)
+  (bitwise-and n #x0F))
+(define (nibble-hi n)
+  (bitwise-and (arithmetic-shift n -4) #x0F))
+
+(module+ test
+  (for* ([x (in-range 16)]
+         [y (in-range 16)])
+    (define n (nibbles x y))
+    (check-pred byte? n)
+    (check-equal? (nibble-hi n) x)
+    (check-equal? (nibble-lo n) y)))
+
+(define-cstruct _block-info
+  (;; where it is on the screen (screens are relatively small)
+   [x _uint16]
+   [y _uint16]
+   ;; what is the width/height available
+   [w _uint16]
+   [h _uint16]
+   ;; draw a box around it?
+   [box-color _uint8]
+   ;; x-offset
+   [dx _uint16]
+   ;; which buffer should be displayed
+   [tex _uint32]))
+
+(module+ test
+  (print-bandwidth "block" _block-info))
