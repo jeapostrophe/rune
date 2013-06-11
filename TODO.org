@@ -82,6 +82,8 @@ Commands could search their body for overlays of a specific type
 * Tasks
 ** DONE implement gap buffer
    CLOSED: [2013-06-07 Fri 16:17]
+** TODO generalize three implementations of zipper
+   two in zip-buffer and one in ctxt:layer
 ** TODO Think about emacs design
    http://en.wikipedia.org/wiki/Emacs
 ** TODO Think about Yi design
