@@ -4,7 +4,7 @@
          racket/match
          racket/class)
 
-(struct gframe (f c pb))
+(struct gframe (f c t pb))
 
 (define (key-event->rune-key ke)
   (define kc
@@ -64,8 +64,8 @@
                    [event-ch ch]))
     (send c focus)
     (send gf show #t)
-    (thread (λ () (yield never-evt)))
-    (gframe gf c paint-box)))
+    (define t (thread (λ () (yield never-evt))))
+    (gframe gf c t paint-box)))
 
 (define (set-gui-frame-label! gf i [prepend? #f])
   (define l
