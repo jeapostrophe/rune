@@ -47,6 +47,8 @@
       (define ek (key-event->rune-key event))
       (when ek
         (async-channel-put event-ch ek)))
+    (define/override (on-size w h)
+      (async-channel-put event-ch '<resize>))
 
     (super-new)))
 

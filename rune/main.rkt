@@ -398,6 +398,9 @@
                         [(rune-key '<delete>)
                          (delete-next)]
 
+                        [(rune-key '<resize>)
+                         rs]
+
                         [x
                          (eprintf "ignored ~s\n" x)
                          (loop x)])))))))
