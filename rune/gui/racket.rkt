@@ -50,19 +50,22 @@
     (super-new)))
 
 (define (gui-frame ch)
-  (define gf (new frame% [label ""]))
-  (define paint-box (box void))
-  (define c (new gf-canvas% [parent gf]
-                 [style '(no-autoclear transparent)]
-                 [paint-callback
-                  (λ (c dc) ((unbox paint-box)
-                             (send c get-width)
-                             (send c get-height)
-                             dc))]
-                 [event-ch ch]))
-  (send c focus)
-  (send gf show #t)
-  (gframe gf c paint-box))
+  (define new-es (make-eventspace))
+  (parameterize ([current-eventspace new-es])
+    (define gf (new frame% [label ""]))
+    (define paint-box (box void))
+    (define c (new gf-canvas% [parent gf]
+                   [style '(no-autoclear transparent)]
+                   [paint-callback
+                    (λ (c dc) ((unbox paint-box)
+                               (send c get-width)
+                               (send c get-height)
+                               dc))]
+                   [event-ch ch]))
+    (send c focus)
+    (send gf show #t)
+    (thread (λ () (yield never-evt)))
+    (gframe gf c paint-box)))
 
 (define (set-gui-frame-label! gf i [prepend? #f])
   (define l
@@ -75,9 +78,6 @@
   (set-box! (gframe-pb gf) f)
   (send (gframe-c gf) refresh-now))
 
-(define gui-sync yield)
-
 (provide gui-frame
-         gui-sync
          set-gui-frame-label!
          gui-frame-refresh!)

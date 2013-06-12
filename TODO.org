@@ -84,6 +84,15 @@ Commands could search their body for overlays of a specific type
    CLOSED: [2013-06-07 Fri 16:17]
 ** TODO generalize three implementations of zipper
    two in zip-buffer and one in ctxt:layer
+** TODO rendering
+   redisplay quickly? (blank out modified rows and update)
+   OR display quickly (shader magic?)
+
+   Will the shader magic pay-off?
+   If not, I can still do fast redisplay by not clearing.
+** TODO define gui interface
+** TODO use markers instead of cursors
+   (because otherwise edits move around other people's cursors weird)
 ** TODO Think about emacs design
    http://en.wikipedia.org/wiki/Emacs
 ** TODO Think about Yi design
@@ -110,7 +119,6 @@ Commands could search their body for overlays of a specific type
    Each "buffer" would get its own process to facilitate safe file
    modification
 ** TODO look at dbus and 9p
-
    The Plan 9 system is very interesting in its UNIX-ness. I like the
    idea of having each tool do a very specific and simple task. 
 

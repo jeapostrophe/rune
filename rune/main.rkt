@@ -366,7 +366,7 @@
 
   (define next-rs
     (let loop ([h empty])
-      (gui-sync
+      (sync
        (choice-evt
         (handle-evt ch
                     (λ (ke)
@@ -413,9 +413,12 @@
   (loop loop ch gf next-rs))
 
 (module+ main
+  (require racket/runtime-path)
+  (define-runtime-path exp "../TODO.org")
+  (define ex (path->string exp))
   (start
    (rstate (hasheq 0
-                   (path->buffer "../TODO.org"))
+                   (path->buffer ex))
            (focus (ctxt:layer
                    (ctxt:top)
                    'horizontal
