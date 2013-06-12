@@ -1,10 +1,11 @@
 #lang racket/base
 (require racket/gui/base
+         racket/contract
          racket/async-channel
          racket/match
          racket/class)
 
-(struct gframe (f c t pb))
+(struct frame (f c t pb))
 
 (define (key-event->rune-key ke)
   (define kc
@@ -49,35 +50,85 @@
 
     (super-new)))
 
-(define (gui-frame ch)
+(struct element (x y w h))
+(struct outline element (c))
+(struct bitmap element (bm dx dy))
+
+(define (make-frame ch)
   (define new-es (make-eventspace))
   (parameterize ([current-eventspace new-es])
     (define gf (new frame% [label ""]))
-    (define paint-box (box void))
+    (define paint-box (box (void)))
+    (define (top-draw! c dc)
+      (send dc clear)
+      (iter-draw! dc (unbox paint-box)))
+    (define (iter-draw! dc es)
+      (match es
+        [(or #f (? void?) (list))
+         (void)]
+        [(cons a d)
+         (iter-draw! dc a)
+         (iter-draw! dc d)]
+        [(outline x y w h c)
+         (send dc set-pen c 2 'solid)
+         (send dc set-brush c 'transparent)
+         (send dc draw-rectangle x y w h)]
+        [(bitmap x y w h bm dx dy)
+         (send dc draw-bitmap-section bm x y dx dy w h)]))
     (define c (new gf-canvas% [parent gf]
                    [style '(no-autoclear transparent)]
-                   [paint-callback
-                    (λ (c dc) ((unbox paint-box)
-                               (send c get-width)
-                               (send c get-height)
-                               dc))]
+                   [paint-callback top-draw!]
                    [event-ch ch]))
     (send c focus)
     (send gf show #t)
     (define t (thread (λ () (yield never-evt))))
-    (gframe gf c t paint-box)))
+    (frame gf c t paint-box)))
 
-(define (set-gui-frame-label! gf i [prepend? #f])
-  (define l
-    (if prepend?
-      (format "~a: ~a" i (send (gframe-f gf) get-label))
-      i))
-  (send (gframe-f gf) set-label l))
+(define (frame-width gf)
+  (send (frame-c gf) get-width))
+(define (frame-height gf)
+  (send (frame-c gf) get-height))
 
-(define (gui-frame-refresh! gf f)
-  (set-box! (gframe-pb gf) f)
-  (send (gframe-c gf) refresh-now))
+(define (frame-refresh! gf l es)
+  (send (frame-f gf) set-label l)
+  (set-box! (frame-pb gf) es)
+  (send (frame-c gf) refresh-now))
 
-(provide gui-frame
-         set-gui-frame-label!
-         gui-frame-refresh!)
+;; xxx
+(define (tree/c ?)
+  any/c)
+
+(provide
+ (contract-out
+  (struct outline
+          ([x real?]
+           [y real?]
+           [w real?]
+           [h real?]
+           [c (is-a?/c color%)]))
+  (struct bitmap
+          ([x real?]
+           [y real?]
+           [w real?]
+           [h real?]
+           [bm (is-a?/c bitmap%)]
+           [dx real?]
+           [dy real?]))
+  [frame?
+   (-> any/c
+       boolean?)]
+  [rename
+   make-frame frame
+   (-> async-channel?
+       frame?)]
+  [frame-width
+   (-> frame?
+       exact-nonnegative-integer?)]
+  [frame-height
+   (-> frame?
+       exact-nonnegative-integer?)]
+  [frame-refresh!
+   (-> frame?
+       string?
+       (tree/c element?)
+       void)]))

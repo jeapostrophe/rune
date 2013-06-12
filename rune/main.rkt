@@ -82,7 +82,7 @@
 
 (define-rstate-lookup rstate-buffer rstate-buffers "Unknown buffer ~e")
 
-(require rune/gui/racket)
+(require (prefix-in g: rune/gui/racket))
 
 (require racket/draw
          racket/class)
@@ -91,6 +91,18 @@
 ;; xxx hack
 (define buffer->os (make-hasheq))
 
+;; xxx
+(define the-font (make-font #:family 'modern))
+(define-values (char-width char-height)
+  (let ()
+    (local-require racket/gui/base)
+    (define text-bm (make-screen-bitmap 200 200))
+    (define text-dc (send text-bm make-dc))
+    (send text-dc set-font the-font)
+    (define-values (width height xtra-below xtra-above)
+      (send text-dc get-text-extent " "))
+    (values width height)))
+
 (define (rstate-render! gf rs)
   (define cursor-outline-c (make-object color% 0 0 255 1.0))
   (define frame-outline-c cursor-outline-c)
@@ -98,179 +110,165 @@
   (define cursor-fill-c/focus (make-object color% 0 0 255 0.5))
   (define cursor-fill-c/unfocus (make-object color% 0 0 255 0.0))
 
-  (define (draw! full-w full-h dc)
-    ;; xxx configurable
-    (send dc clear)
-    (define the-font (make-font #:family 'modern))
-    (send dc set-font the-font)
-    (send dc set-text-foreground "black")
-    (send dc set-text-mode 'transparent)
+  (define full-w (g:frame-width gf))
+  (define full-h (g:frame-height gf))
 
-    (define-values (char-width char-height)
-      (let-values ([(width height xtra-below xtra-above)
-                    (send dc get-text-extent " ")])
-        (values width height)))
+  (define margin% 0.5)
+  (define hmargin (* char-width margin%))
+  (define vmargin (* char-height margin%))
 
-    (define margin% 0.5)
-    (define hmargin (* char-width margin%))
-    (define vmargin (* char-height margin%))
+  (define (view->elements x y w h focused? v)
+    (match-define (view c bid) v)
 
-    (define (draw-view! x y w h focused? v)
-      (match-define (view c bid) v)
+    ;; Render a buffer
+    (list
+     (let ()
+       (define b (rstate-buffer rs bid))
 
-      ;; Render a buffer
-      (let ()
-        (define b (rstate-buffer rs bid))
-        (when focused?
-          ;; xxx get this from an overlay?
-          (set-gui-frame-label! gf (buffer:file-path b)))
+       (define b-bm
+         (hash-ref!
+          buffer->bm bid
+          (λ ()
+            (local-require (only-in racket/gui/base make-screen-bitmap))
 
-        (define b-bm
-          (hash-ref!
-           buffer->bm bid
-           (λ ()
-             (local-require (only-in racket/gui/base make-screen-bitmap))
+            (define max-row (buffer-max-row b))
+            (define max-col
+              (for/fold ([mc 0])
+                  ([r (in-range max-row)])
+                (max mc (buffer-max-col b r))))
 
-             (define max-row (buffer-max-row b))
-             (define max-col
-               (for/fold ([mc 0])
-                   ([r (in-range max-row)])
-                 (max mc (buffer-max-col b r))))
+            (define overlays
+              (hash-ref!
+               buffer->os bid
+               (λ ()
+                 (for/fold ([odb o:empty-odb])
+                     ([row (in-range max-row)])
+                   (for/fold ([odb odb])
+                       ([col (in-range (buffer-max-col b row))])
+                     (if (zero? (random 2))
+                       (o:odb-set odb (o:rect:point bid row col) 'highlight? #t)
+                       odb))))))
 
-             (define overlays
-               (hash-ref!
-                buffer->os bid
-                (λ ()
-                  (for/fold ([odb o:empty-odb])
-                      ([row (in-range max-row)])
-                    (for/fold ([odb odb])
-                        ([col (in-range (buffer-max-col b row))])
-                      (if (zero? (random 2))
-                        (o:odb-set odb (o:rect:point bid row col) 'highlight? #t)
-                        odb))))))
+            (define bm
+              (make-screen-bitmap
+               (inexact->exact (ceiling (* max-col char-width)))
+               (inexact->exact (ceiling (* max-row char-height)))))
+            (define bm-dc
+              (send bm make-dc))
 
-             (define bm
-               (make-screen-bitmap
-                (inexact->exact (ceiling (* max-col char-width)))
-                (inexact->exact (ceiling (* max-row char-height)))))
-             (define bm-dc
-               (send bm make-dc))
+            (send bm-dc set-font the-font)
 
-             (send bm-dc set-font the-font)
+            (for ([row (in-range max-row)])
+              (define l (buffer-line b row))
 
-             (for ([row (in-range max-row)])
-               (define l (buffer-line b row))
+              ;; xxx line at once: 178ms
+              ;; (send bm-dc draw-text l 0 (* row char-height))
 
-               ;; xxx line at once: 178ms
-               ;; (send bm-dc draw-text l 0 (* row char-height))
+              (for ([char (in-string l)]
+                    [col (in-naturals)])
 
-               (for ([char (in-string l)]
-                     [col (in-naturals)])
+                (define os
+                  (if #t
+                    ;; slow (list): 7000ms
+                    ;; fast (hash): 200-500 ms
+                    (o:odb-hash overlays (o:rect:point bid row col))
+                    ;; fake:  600ms
+                    (hasheq 'highlight? (if (zero? (random 2)) #t #f))))
+                (send bm-dc set-text-foreground
+                      (if (hash-ref os 'highlight? #f)
+                        "red"
+                        "black"))
+                (send bm-dc draw-text (string char)
+                      (* col char-width) (* row char-height))))
 
-                 (define os
-                   (if #t
-                     ;; slow (list): 7000ms
-                     ;; fast (hash): 200-500 ms
-                     (o:odb-hash overlays (o:rect:point bid row col))
-                     ;; fake:  600ms
-                     (hasheq 'highlight? (if (zero? (random 2)) #t #f))))
-                 (send bm-dc set-text-foreground
-                       (if (hash-ref os 'highlight? #f)
-                         "red"
-                         "black"))
-                 (send bm-dc draw-text (string char)
-                       (* col char-width) (* row char-height))))
+            bm)))
 
-             bm)))
+       (g:bitmap (+ x hmargin) (+ y vmargin)
+                 (max 0 (- w hmargin)) (max 0 (- h vmargin))
+                 b-bm 0 0))
 
-        (send dc draw-bitmap-section b-bm
-              (+ x hmargin) (+ y vmargin)
-              0 0
-              (max 0 (- w hmargin)) (max 0 (- h vmargin))))
+     ;; Outline
+     (g:outline x y w h
+                (if focused?
+                  frame-outline-c
+                  frame-outline-c/dull))
 
-      ;; Outline
-      (let ()
-        (send dc set-pen
-              (if focused?
-                frame-outline-c
-                frame-outline-c/dull)
-              2 'solid)
-        (send dc set-brush cursor-outline-c 'transparent)
-        (send dc draw-rectangle x y w h))
+     ;; Cursor
+     (let ()
+       ;; xxx not showing for non-focused
+       (match-define (cursor row col) c)
+       (define cursor-x (+ x hmargin (* col char-width)))
+       (define cursor-y (+ y vmargin (* row char-height)))
+       (unless (or (< w (+ cursor-x char-width))
+                   (< h (+ cursor-y char-height)))
+         (g:outline cursor-x cursor-y
+                    char-width char-height
+                    (if focused?
+                      cursor-fill-c/focus
+                      cursor-fill-c/unfocus))))))
 
-      ;; Cursor
-      (let ()
-        ;; xxx not showing for non-focused
-        (match-define (cursor row col) c)
-        (send dc set-brush (if focused?
-                             cursor-fill-c/focus
-                             cursor-fill-c/unfocus)
-              'solid)
-        (send dc set-pen cursor-outline-c 1 'solid)
+  (define (ctxt->elements x y w h c)
+    (match c
+      [(ctxt:top)
+       (values x y w h empty)]
+      [(ctxt:layer p s l r)
+       (define-values (mx my mw mh es) (ctxt->elements x y w h p))
+       (match s
+         ;; xxx merge these
+         ['horizontal
+          (define i (length l))
+          (define ew (/ mw (+ i 1 (length r))))
+          (define (xof j)
+            (+ mx (* j ew)))
 
-        (let ()
-          (define cursor-x (+ x hmargin (* col char-width)))
-          (define cursor-y (+ y vmargin (* row char-height)))
-          (unless (or (< w (+ cursor-x char-width))
-                      (< h (+ cursor-y char-height)))
-            (send dc draw-rectangle
-                  cursor-x cursor-y
-                  char-width char-height)))))
+          (values (xof i) my ew mh
+                  (cons (for/list ([sf (in-list l)]
+                                   [rj (in-naturals 1)])
+                          (define j (- i rj))
+                          (focus->elements (xof j) my ew mh #f sf))
+                        (for/list ([sf (in-list r)]
+                                   [aj (in-naturals 1)])
+                          (define j (+ i aj))
+                          (focus->elements (xof j) my ew mh #f sf))))]
+         ['vertical
+          (define i (length l))
+          (define eh (/ mh (+ i 1 (length r))))
+          (define (yof j)
+            (+ my (* j eh)))
 
-    (define (draw-ctxt! x y w h c)
-      (match c
-        [(ctxt:top)
-         (values x y w h)]
-        [(ctxt:layer p s l r)
-         (define-values (mx my mw mh) (draw-ctxt! x y w h p))
-         (match s
-           ;; xxx merge these
-           ['horizontal
-            (define i (length l))
-            (define ew (/ mw (+ i 1 (length r))))
-            (define (xof j)
-              (+ mx (* j ew)))
+          (values mx (yof i) mw eh
+                  (cons (for/list ([sf (in-list l)]
+                                   [rj (in-naturals 1)])
+                          (define j (- i rj))
+                          (focus->elements mx (yof j) mw eh #f sf))
+                        (for/list ([sf (in-list r)]
+                                   [aj (in-naturals 1)])
+                          (define j (+ i aj))
+                          (focus->elements mx (yof j) mw eh #f sf))))])]))
+  (define (focus->elements x y w h focused? f)
+    (match-define (focus c v) f)
+    (define-values (mx my mw mh es) (ctxt->elements x y w h c))
+    (cons (view->elements mx my mw mh focused? v) es))
 
-            (for ([sf (in-list l)]
-                  [rj (in-naturals 1)])
-              (define j (- i rj))
-              (draw-focus! (xof j) my ew mh #f sf))
-            (for ([sf (in-list r)]
-                  [aj (in-naturals 1)])
-              (define j (+ i aj))
-              (draw-focus! (xof j) my ew mh #f sf))
-
-            (values (xof i) my ew mh)]
-           ['vertical
-            (define i (length l))
-            (define eh (/ mh (+ i 1 (length r))))
-            (define (yof j)
-              (+ my (* j eh)))
-
-            (for ([sf (in-list l)]
-                  [rj (in-naturals 1)])
-              (define j (- i rj))
-              (draw-focus! mx (yof j) mw eh #f sf))
-            (for ([sf (in-list r)]
-                  [aj (in-naturals 1)])
-              (define j (+ i aj))
-              (draw-focus! mx (yof j) mw eh #f sf))
-
-            (values mx (yof i) mw eh)])]))
-
-    (define (draw-focus! x y w h focused? f)
-      (match-define (focus c v) f)
-      (define-values (mx my mw mh) (draw-ctxt! x y w h c))
-      (draw-view! mx my mw mh focused? v))
-
-    (draw-focus! 0 0 full-w full-h #t (rstate-focus rs)))
-
-  (gui-frame-refresh! gf draw!)
+  (define before-render (current-inexact-milliseconds))
+  (define elements
+    (focus->elements 0 0 full-w full-h #t (rstate-focus rs)))
+  (define focused-label
+    (buffer:file-path (rstate-buffer rs (view-buffer (focus-view (rstate-focus rs))))))
+  (define after-render (current-inexact-milliseconds))
+  (g:frame-refresh!
+   gf
+   ;; xxx doesn't include frame-refresh!
+   ;; xxx doesn't include key handling code
+   (format "~ams: ~a"
+           (real->decimal-string (- after-render before-render))
+           focused-label)
+   elements)
   (void))
 
 (define (start rs)
   (define ch (make-async-channel))
-  (define gf (gui-frame ch))
+  (define gf (g:frame ch))
   (rstate-loop rstate-loop ch gf rs))
 
 (define-match-expander rune-key
@@ -280,13 +278,7 @@
 ;; We take loop as an argument so we can write tests that don't go
 ;; forever. Cute, huh?
 (define (rstate-loop loop ch gf rs)
-  (let ()
-    (define before-render (current-inexact-milliseconds))
-    (rstate-render! gf rs)
-    (define after-render (current-inexact-milliseconds))
-    (set-gui-frame-label!
-     gf (format "~ams" (real->decimal-string (- after-render before-render)))
-     #t))
+  (rstate-render! gf rs)
 
   (define (move-cursor dc dr)
     (struct-copy
