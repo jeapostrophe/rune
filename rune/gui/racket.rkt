@@ -121,7 +121,7 @@
        boolean?)]
   [rename
    make-frame frame
-   (-> async-channel?
+   (-> async-channel? ;; xxx contract to correct symbols
        frame?)]
   [frame-width
    (-> frame?
