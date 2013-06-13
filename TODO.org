@@ -90,7 +90,8 @@ Commands could search their body for overlays of a specific type
 
    Will the shader magic pay-off?
    If not, I can still do fast redisplay by not clearing.
-** TODO define gui interface
+** DONE define gui interface
+   CLOSED: [2013-06-12 Wed 16:07]
 ** TODO use markers instead of cursors
    (because otherwise edits move around other people's cursors weird)
 ** TODO Think about emacs design

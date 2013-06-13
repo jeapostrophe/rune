@@ -129,12 +129,14 @@
            [y real?]
            [w real?]
            [h real?]
+           ;; xxx
            [c (is-a?/c color%)]))
   (struct bitmap
           ([x real?]
            [y real?]
            [w real?]
            [h real?]
+           ;; xxx
            [bm (is-a?/c bitmap%)]
            [dx real?]
            [dy real?]))
