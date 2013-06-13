@@ -3,7 +3,8 @@
          racket/contract
          racket/async-channel
          racket/match
-         racket/class)
+         racket/class
+         rune/lib/timing)
 
 (struct frame (frame% canvas% thread elements-box label-box perf-hash))
 
@@ -96,14 +97,25 @@
   (set-box! (frame-label-box gf) l)
   (update-label! gf)
   (set-box! (frame-elements-box gf) es)
-  (send (frame-canvas% gf) refresh-now))
+  (define-values (rt _) 
+    (time-it (send (frame-canvas% gf) refresh-now)))
+  (frame-perf! gf 'frame-render rt))
 
 (define (frame-perf! gf k v)
   (hash-set! (frame-perf-hash gf) k v)
   (update-label! gf))
 
 (define (update-label! gf)
-  (define l (format "~a" (unbox (frame-label-box gf))))
+  (define h (frame-perf-hash gf))
+  (define (tl k)
+    (real->decimal-string (hash-ref h k 0)))
+  (define l 
+    (format "~a/~a/~a/~a: ~a"
+            (tl 'key-handling)
+            (tl 'transform)
+            (tl 'elements)
+            (tl 'frame-render)
+            (unbox (frame-label-box gf))))
   (send (frame-frame% gf) set-label l))
 
 ;; xxx

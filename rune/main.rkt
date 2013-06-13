@@ -4,6 +4,7 @@
          racket/function
          racket/match
          racket/async-channel
+         rune/lib/timing
          (prefix-in o: rune/lib/overlay2)
          (prefix-in z: rune/lib/buffer))
 
@@ -253,20 +254,12 @@
     (define-values (mx my mw mh es) (ctxt->elements x y w h c))
     (cons (view->elements mx my mw mh focused? v) es))
 
-  (define before-render (current-inexact-milliseconds))
-  (define elements
-    (focus->elements 0 0 full-w full-h #t (rstate-focus rs)))
+  (define-values (et elements)
+    (time-it (focus->elements 0 0 full-w full-h #t (rstate-focus rs))))
+  (g:frame-perf! gf 'elements et)
   (define focused-label
     (buffer:file-path (rstate-buffer rs (view-buffer (focus-view (rstate-focus rs))))))
-  (define after-render (current-inexact-milliseconds))
-  (g:frame-refresh!
-   gf
-   ;; xxx doesn't include frame-refresh!
-   ;; xxx doesn't include key handling code
-   (format "~ams: ~a"
-           (real->decimal-string (- after-render before-render))
-           focused-label)
-   elements)
+  (g:frame-refresh! gf focused-label elements)
   (void))
 
 ;; Actions
@@ -410,13 +403,19 @@
                     (λ (ke)
                       (let/ec esc
                         (define kes (cons ke h))
-                        (define transform
-                          (with-handlers ([exn:misc:match?
-                                           (λ (x)
-                                             (eprintf "ignored ~s\n" kes)
-                                             (esc (loop kes)))])
-                            (the-key-handler kes)))
-                        (transform rs))))))))
+                        (define-values
+                          (kt transform)
+                          (time-it
+                           (with-handlers ([exn:misc:match?
+                                            (λ (x)
+                                              (eprintf "ignored ~s\n" kes)
+                                              (esc (loop kes)))])
+                             (the-key-handler kes))))
+                        (g:frame-perf! gf 'key-handling kt)
+                        (define-values (tt next-rs)
+                          (time-it (transform rs)))
+                        (g:frame-perf! gf 'transform tt)
+                        next-rs)))))))
 
   (loop loop ch gf next-rs))
 
