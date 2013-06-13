@@ -5,7 +5,7 @@
          racket/match
          racket/class)
 
-(struct frame (f c t pb))
+(struct frame (frame% canvas% thread elements-box label-box perf-hash))
 
 (define (key-event->rune-key ke)
   (define kc
@@ -56,27 +56,28 @@
 (struct outline element (c))
 (struct bitmap element (bm dx dy))
 
+(define (iter-draw! dc es)
+  (match es
+    [(or #f (? void?) (list))
+     (void)]
+    [(cons a d)
+     (iter-draw! dc a)
+     (iter-draw! dc d)]
+    [(outline x y w h c)
+     (send dc set-pen c 2 'solid)
+     (send dc set-brush c 'transparent)
+     (send dc draw-rectangle x y w h)]
+    [(bitmap x y w h bm dx dy)
+     (send dc draw-bitmap-section bm x y dx dy w h)]))
+
 (define (make-frame ch)
   (define new-es (make-eventspace))
   (parameterize ([current-eventspace new-es])
     (define gf (new frame% [label ""]))
-    (define paint-box (box (void)))
+    (define elements-box (box (void)))
     (define (top-draw! c dc)
       (send dc clear)
-      (iter-draw! dc (unbox paint-box)))
-    (define (iter-draw! dc es)
-      (match es
-        [(or #f (? void?) (list))
-         (void)]
-        [(cons a d)
-         (iter-draw! dc a)
-         (iter-draw! dc d)]
-        [(outline x y w h c)
-         (send dc set-pen c 2 'solid)
-         (send dc set-brush c 'transparent)
-         (send dc draw-rectangle x y w h)]
-        [(bitmap x y w h bm dx dy)
-         (send dc draw-bitmap-section bm x y dx dy w h)]))
+      (iter-draw! dc (unbox elements-box)))
     (define c (new gf-canvas% [parent gf]
                    [style '(no-autoclear transparent)]
                    [paint-callback top-draw!]
@@ -84,17 +85,26 @@
     (send c focus)
     (send gf show #t)
     (define t (thread (λ () (yield never-evt))))
-    (frame gf c t paint-box)))
+    (frame gf c t elements-box (box "") (make-hasheq))))
 
 (define (frame-width gf)
-  (send (frame-c gf) get-width))
+  (send (frame-canvas% gf) get-width))
 (define (frame-height gf)
-  (send (frame-c gf) get-height))
+  (send (frame-canvas% gf) get-height))
 
 (define (frame-refresh! gf l es)
-  (send (frame-f gf) set-label l)
-  (set-box! (frame-pb gf) es)
-  (send (frame-c gf) refresh-now))
+  (set-box! (frame-label-box gf) l)
+  (update-label! gf)
+  (set-box! (frame-elements-box gf) es)
+  (send (frame-canvas% gf) refresh-now))
+
+(define (frame-perf! gf k v)
+  (hash-set! (frame-perf-hash gf) k v)
+  (update-label! gf))
+
+(define (update-label! gf)
+  (define l (format "~a" (unbox (frame-label-box gf))))
+  (send (frame-frame% gf) set-label l))
 
 ;; xxx
 (define (tree/c ?)
@@ -129,6 +139,11 @@
   [frame-height
    (-> frame?
        exact-nonnegative-integer?)]
+  [frame-perf!
+   (-> frame?
+       symbol?
+       number?
+       void)]
   [frame-refresh!
    (-> frame?
        string?
