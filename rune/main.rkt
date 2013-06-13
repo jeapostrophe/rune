@@ -5,13 +5,16 @@
          racket/match
          racket/async-channel
          rune/lib/timing
-         (prefix-in z: rune/lib/buffer))
+         (prefix-in z: rune/lib/buffer)
+         (prefix-in g: rune/gui/racket)
+         (prefix-in d: rune/draw/racket))
 
-(struct buffer (overlay row->overlay row*col->overlay content) #:mutable)
+(struct buffer (dirty? overlay row->overlay row*col->overlay content) #:mutable)
 
 (define (path->buffer p)
   (define b
-    (buffer (make-hasheq (list (cons 'name p)))
+    (buffer #t
+            (make-hasheq (list (cons 'name p)))
             (make-hasheq)
             (make-hash)
             (z:string->buffer (file->string p))))
@@ -104,38 +107,79 @@
 
 (define-rstate-lookup rstate-buffer rstate-buffers "Unknown buffer ~e")
 
-(require (prefix-in g: rune/gui/racket))
-
-(require racket/draw
-         racket/class)
-
-(define buffer->bm (make-hasheq))
+;; xxx integrate into buffer
+(define buffer->c (make-hasheq))
+;; xxx change font
+(define the-drawer (d:drawer ""))
 
 ;; xxx
-(define the-font (make-font #:family 'modern))
-(define-values (char-width char-height)
+(define-values
+  (c:background c:text c:highlight c:outline)
   (let ()
-    (local-require (only-in racket/gui/base make-screen-bitmap))
-    (define text-bm (make-screen-bitmap 200 200))
-    (define text-dc (send text-bm make-dc))
-    (send text-dc set-font the-font)
-    (define-values (width height xtra-below xtra-above)
-      (send text-dc get-text-extent " "))
-    (values width height)))
+    (local-require racket/draw racket/class)
+    (define base3 (make-object color% 253 246 227))
+    (define base00 (make-object color% 101 123 131))
+    (define red (make-object color% 220 50 47))
+    (define blue (make-object color% 38 139 210))
+    (values base3 base00 red blue)))
 
 (define (rstate-render! gf rs)
-  (define cursor-outline-c (make-object color% 0 0 255 1.0))
-  (define frame-outline-c cursor-outline-c)
-  (define frame-outline-c/dull (make-object color% 127 127 127 0.5))
-  (define cursor-fill-c/focus (make-object color% 0 0 255 0.5))
-  (define cursor-fill-c/unfocus (make-object color% 0 0 255 0.0))
-
   (define full-w (g:frame-width gf))
   (define full-h (g:frame-height gf))
+  (define char-width (d:drawer-char-width the-drawer))
+  (define char-height (d:drawer-char-height the-drawer))
 
   (define margin% 0.5)
   (define hmargin (* char-width margin%))
   (define vmargin (* char-height margin%))
+
+  (define-values (bt _)
+    (time-it
+     (for ([(bid b) (rstate-buffers rs)])
+       (when (buffer-dirty? b)
+         (eprintf "buffer dirty: ~a\n" bid)
+
+         (define rs-o (rstate-overlay rs))
+         (define b-o (buffer-overlay b))
+
+         ;; xxx
+         (define max-row (buffer-max-row b))
+         (define max-col
+           (for/fold ([mc 0])
+               ([r (in-range max-row)])
+             (max mc (buffer-max-col b r))))
+
+         (define b-c
+           (hash-ref!
+            buffer->c bid
+            (λ ()
+              (eprintf "canvas gone: ~a\n" bid)
+              (d:canvas the-drawer max-row max-col))))
+
+         (d:canvas-refresh!
+          b-c max-row max-col
+          (for/list ([row (in-range max-row)])
+            (define l (buffer-line b row))
+            (define row-o (hash-ref (buffer-row->overlay b) row make-hasheq))
+            ;; xxx line at once: 178ms
+            ;; (send bm-dc draw-text l 0 (* row char-height))
+
+            (for/list ([char (in-string l)]
+                       [col (in-naturals)])
+              (define col-o
+                (hash-ref (buffer-row*col->overlay b) (cons row col) make-hasheq))
+              (d:glyph row col
+                       ;; slow (list): 7000ms
+                       ;; fast (hash): 200-500 ms
+                       ;; fake:  600ms
+                       (if (overlay-ref (rs-o b-o row-o col-o) 'highlight? #f)
+                         c:highlight
+                         c:text)
+                       c:background
+                       char))))
+
+         (set-buffer-dirty?! b #f)))))
+  (g:frame-perf! gf 'buffers bt)
 
   (define (view->elements x y w h focused? v)
     (match-define (view c bid) v)
@@ -144,51 +188,8 @@
     (list*
      (let ()
        (define b (rstate-buffer rs bid))
-
-       (define b-bm
-         (hash-ref!
-          buffer->bm bid
-          (λ ()
-            (local-require (only-in racket/gui/base make-screen-bitmap))
-
-            (define max-row (buffer-max-row b))
-            (define max-col
-              (for/fold ([mc 0])
-                  ([r (in-range max-row)])
-                (max mc (buffer-max-col b r))))
-
-            (define bm
-              (make-screen-bitmap
-               (inexact->exact (ceiling (* max-col char-width)))
-               (inexact->exact (ceiling (* max-row char-height)))))
-            (define bm-dc
-              (send bm make-dc))
-            (define rs-o (rstate-overlay rs))
-            (define b-o (buffer-overlay b))
-
-            (send bm-dc set-font the-font)
-
-            (for ([row (in-range max-row)])
-              (define l (buffer-line b row))
-              (define row-o (hash-ref (buffer-row->overlay b) row make-hasheq))
-              ;; xxx line at once: 178ms
-              ;; (send bm-dc draw-text l 0 (* row char-height))
-
-              (for ([char (in-string l)]
-                    [col (in-naturals)])                
-                (define col-o (hash-ref (buffer-row*col->overlay b) (cons row col) make-hasheq))
-                (send bm-dc set-text-foreground
-                      ;; slow (list): 7000ms
-                      ;; fast (hash): 200-500 ms
-                      ;; fake:  600ms
-                      (if (overlay-ref (rs-o b-o row-o col-o) 'highlight? #f)
-                        "red"
-                        "black"))
-                (send bm-dc draw-text (string char)
-                      (* col char-width) (* row char-height))))
-
-            bm)))
-
+       (define b-c (hash-ref buffer->c bid))
+       (define b-bm (d:canvas-bitmap b-c))
        (g:bitmap (+ x hmargin) (+ y vmargin)
                  (max 0 (- w hmargin)) (max 0 (- h vmargin))
                  b-bm 0 0))
@@ -196,8 +197,8 @@
      ;; Outline
      (g:outline x y w h
                 (if focused?
-                  frame-outline-c
-                  frame-outline-c/dull))
+                  c:outline
+                  c:text))
 
      ;; Cursor
      (let ()
@@ -210,8 +211,8 @@
          (g:outline cursor-x cursor-y
                     char-width char-height
                     (if focused?
-                      cursor-fill-c/focus
-                      cursor-fill-c/unfocus))))))
+                      c:outline
+                      c:text))))))
 
   (define (ctxt->elements x y w h c)
     (match c
@@ -331,7 +332,7 @@
   (match-define (view (cursor row col) bid) v)
   (define b (rstate-buffer rs bid))
   (begin0 (f b row col)
-          (hash-remove! buffer->bm bid)))
+          (set-buffer-dirty?! b #t)))
 
 (define ((insert-char c) rs)
   (do-to-buffer rs

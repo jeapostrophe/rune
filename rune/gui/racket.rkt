@@ -4,6 +4,7 @@
          racket/async-channel
          racket/match
          racket/class
+         rune/lib/tree
          rune/lib/timing)
 
 (struct frame (frame% canvas% thread elements-box label-box perf-hash))
@@ -57,20 +58,6 @@
 (struct outline element (c))
 (struct bitmap element (bm dx dy))
 
-(define (iter-draw! dc es)
-  (match es
-    [(or #f (? void?) (list))
-     (void)]
-    [(cons a d)
-     (iter-draw! dc a)
-     (iter-draw! dc d)]
-    [(outline x y w h c)
-     (send dc set-pen c 2 'solid)
-     (send dc set-brush c 'transparent)
-     (send dc draw-rectangle x y w h)]
-    [(bitmap x y w h bm dx dy)
-     (send dc draw-bitmap-section bm x y dx dy w h)]))
-
 (define (make-frame ch)
   (define new-es (make-eventspace))
   (parameterize ([current-eventspace new-es])
@@ -78,11 +65,22 @@
     (define elements-box (box (void)))
     (define (top-draw! c dc)
       (send dc clear)
-      (iter-draw! dc (unbox elements-box)))
-    (define c (new gf-canvas% [parent gf]
-                   [style '(no-autoclear transparent)]
-                   [paint-callback top-draw!]
-                   [event-ch ch]))
+      (define ecount
+        (tree-iter!
+         (match-lambda
+          [(outline x y w h c)
+           (send dc set-pen c 2 'solid)
+           (send dc set-brush c 'transparent)
+           (send dc draw-rectangle x y w h)]
+          [(bitmap x y w h bm dx dy)
+           (send dc draw-bitmap-section bm x y dx dy w h)])
+         (unbox elements-box)))
+      (eprintf "drew ~a elements\n" ecount))
+    (define c
+      (new gf-canvas% [parent gf]
+           [style '(no-autoclear transparent)]
+           [paint-callback top-draw!]
+           [event-ch ch]))
     (send c focus)
     (send gf show #t)
     (define t (thread (λ () (yield never-evt))))
@@ -97,7 +95,7 @@
   (set-box! (frame-label-box gf) l)
   (update-label! gf)
   (set-box! (frame-elements-box gf) es)
-  (define-values (rt _) 
+  (define-values (rt _)
     (time-it (send (frame-canvas% gf) refresh-now)))
   (frame-perf! gf 'frame-render rt))
 
@@ -109,18 +107,15 @@
   (define h (frame-perf-hash gf))
   (define (tl k)
     (real->decimal-string (hash-ref h k 0)))
-  (define l 
-    (format "~a/~a/~a/~a: ~a"
+  (define l
+    (format "K~a/T~a/B~a/E~a/F~a: ~a"
             (tl 'key-handling)
             (tl 'transform)
+            (tl 'buffers)
             (tl 'elements)
             (tl 'frame-render)
             (unbox (frame-label-box gf))))
   (send (frame-frame% gf) set-label l))
-
-;; xxx
-(define (tree/c ?)
-  any/c)
 
 (provide
  (contract-out
