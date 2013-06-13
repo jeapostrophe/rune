@@ -61,30 +61,33 @@
 (define (make-frame ch)
   (define new-es (make-eventspace))
   (parameterize ([current-eventspace new-es])
-    (define gf (new frame% [label ""]))
+    (define rf (new frame% [label ""]))
     (define elements-box (box (void)))
     (define (top-draw! c dc)
       (send dc clear)
-      (define ecount
-        (tree-iter!
-         (match-lambda
-          [(outline x y w h c)
-           (send dc set-pen c 2 'solid)
-           (send dc set-brush c 'transparent)
-           (send dc draw-rectangle x y w h)]
-          [(bitmap x y w h bm dx dy)
-           (send dc draw-bitmap-section bm x y dx dy w h)])
-         (unbox elements-box)))
+      (define-values (ft ecount)
+        (time-it
+         (tree-iter!
+          (match-lambda
+           [(outline x y w h c)
+            (send dc set-pen c 2 'solid)
+            (send dc set-brush c 'transparent)
+            (send dc draw-rectangle x y w h)]
+           [(bitmap x y w h bm dx dy)
+            (send dc draw-bitmap-section bm x y dx dy w h)])
+          (unbox elements-box))))
+      (when gf (frame-perf! gf 'frame-draw ft))
       (eprintf "drew ~a elements\n" ecount))
     (define c
-      (new gf-canvas% [parent gf]
+      (new gf-canvas% [parent rf]
            [style '(no-autoclear transparent)]
            [paint-callback top-draw!]
            [event-ch ch]))
     (send c focus)
-    (send gf show #t)
+    (send rf show #t)
     (define t (thread (λ () (yield never-evt))))
-    (frame gf c t elements-box (box "") (make-hasheq))))
+    (define gf (frame rf c t elements-box (box "") (make-hasheq)))
+    gf))
 
 (define (frame-width gf)
   (send (frame-canvas% gf) get-width))
@@ -108,12 +111,15 @@
   (define (tl k)
     (real->decimal-string (hash-ref h k 0)))
   (define l
-    (format "K~a/T~a/B~a/E~a/F~a: ~a"
+    (format "K~a/T~a/B~a/E~a/D~a/F~a: ~a"
             (tl 'key-handling)
             (tl 'transform)
             (tl 'buffers)
             (tl 'elements)
-            (tl 'frame-render)
+            (tl 'frame-draw)
+            (real->decimal-string 
+             (- (hash-ref h 'frame-render 0)
+                (hash-ref h 'frame-draw 0)))
             (unbox (frame-label-box gf))))
   (send (frame-frame% gf) set-label l))
 

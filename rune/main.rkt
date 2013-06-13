@@ -395,6 +395,7 @@
 ;; Start
 (define (start rs)
   (define ch (make-async-channel))
+  ;; xxx give it the background color
   (define gf (g:frame ch))
   (rstate-loop rstate-loop ch gf rs))
 
