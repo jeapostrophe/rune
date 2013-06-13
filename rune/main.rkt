@@ -8,34 +8,41 @@
          (prefix-in o: rune/lib/overlay2)
          (prefix-in z: rune/lib/buffer))
 
-(struct buffer ())
-(struct buffer:file (path [content #:mutable]))
+(struct buffer (overlay content) #:mutable)
 
 (define (path->buffer p)
-  (buffer:file p (z:string->buffer (file->string p))))
+  (buffer (make-hasheq (list (cons 'name p)))
+          (z:string->buffer (file->string p))))
+
 (define (buffer-max-row b)
-  (z:buffer-rows (buffer:file-content b)))
+  (z:buffer-rows (buffer-content b)))
 (define (buffer-max-col b r)
-  (z:buffer-row-cols (buffer:file-content b) r))
+  (z:buffer-row-cols (buffer-content b) r))
 (define (buffer-line b r)
-  (z:buffer-row (buffer:file-content b) r))
+  (z:buffer-row (buffer-content b) r))
 (define (buffer-insert-at! b row col c)
-  (define zb (buffer:file-content b))
+  (define zb (buffer-content b))
   (define nzb (z:buffer-insert-char zb row col c))
-  (set-buffer:file-content! b nzb)
+  (set-buffer-content! b nzb)
   (void))
 (define (buffer-delete-next! b row col)
-  (define zb (buffer:file-content b))
+  (define zb (buffer-content b))
   (with-handlers ([exn:fail? (λ (x) #f)])
     (define-values (_ nzb) (z:buffer-delete-next zb row col))
-    (set-buffer:file-content! b nzb)
+    (set-buffer-content! b nzb)
     #t))
 (define (buffer-delete-previous! b row col)
-  (define zb (buffer:file-content b))
+  (define zb (buffer-content b))
   (with-handlers ([exn:fail? (λ (x) #f)])
     (define-values (_ nzb) (z:buffer-delete-previous zb row col))
-    (set-buffer:file-content! b nzb)
+    (set-buffer-content! b nzb)
     #t))
+
+(define-syntax-rule (overlay-ref (rs b) k dv)
+  (let ([kv k])
+    (hash-ref (buffer-overlay b) kv
+              (λ ()
+                (hash-ref (rstate-overlay rs) kv dv)))))
 
 (struct cursor (row col) #:transparent)
 
@@ -60,7 +67,9 @@
      (define nr (clamp 0 (+ r dr) (buffer-max-row b)))
      (cursor nr (clamp 0 c (buffer-max-col b nr)))]))
 
-(struct view (cursor buffer))
+(struct view (cursor bid))
+(define (view-buffer rs v)
+  (rstate-buffer rs (view-bid v)))
 
 (struct ctxt ())
 (struct ctxt:top ctxt ())
@@ -75,7 +84,7 @@
 ;; view is a view
 (struct focus (ctxt view))
 
-(struct rstate (buffers focus))
+(struct rstate (overlay buffers focus))
 (define-syntax-rule (define-rstate-lookup rstate-view rstate-views err)
   (define (rstate-view rs vid)
     (hash-ref (rstate-views rs) vid
@@ -258,7 +267,7 @@
     (time-it (focus->elements 0 0 full-w full-h #t (rstate-focus rs))))
   (g:frame-perf! gf 'elements et)
   (define focused-label
-    (buffer:file-path (rstate-buffer rs (view-buffer (focus-view (rstate-focus rs))))))
+    (overlay-ref (rs (view-buffer rs (focus-view (rstate-focus rs)))) 'name ""))
   (g:frame-refresh! gf focused-label elements)
   (void))
 
@@ -424,7 +433,8 @@
   (define-runtime-path exp "../TODO.org")
   (define ex (path->string exp))
   (start
-   (rstate (hasheq 0
+   (rstate (hasheq)
+           (hasheq 0
                    (path->buffer ex))
            (focus (ctxt:layer
                    (ctxt:top)
