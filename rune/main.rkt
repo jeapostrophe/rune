@@ -1,6 +1,7 @@
 #lang racket/base
 (require racket/file
          racket/list
+         racket/function
          racket/match
          racket/async-channel
          (prefix-in o: rune/lib/overlay2)
@@ -268,95 +269,138 @@
    elements)
   (void))
 
+;; Actions
+(define-match-expander rune-key
+  (syntax-rules ()
+    [(_ e ...) (list* e ... _)]))
+
+(define ((move-cursor dc dr) rs)
+  (struct-copy
+   rstate rs
+   [focus
+    (let ()
+      (match-define (focus ctxt v) (rstate-focus rs))
+      (match-define (view c bid) v)
+      (define b (rstate-buffer rs bid))
+      (focus ctxt (view (cursor-move c dc dr b) bid)))]))
+
+(define (list-move-focus l r f df)
+  (cond
+    [(and (not (empty? l)) (negative? df))
+     (values (rest l) (list* f r) (first l))]
+    [(and (not (empty? r)) (positive? df))
+     (values (list* f l) (rest r) (first r))]
+    [else
+     (values l r f)]))
+
+(define (ctxt-reparent np c)
+  (match c
+    [(ctxt:top)
+     np]
+    [(ctxt:layer p s l r)
+     (ctxt:layer (ctxt-reparent np p) s l r)]))
+
+(define ((move-focus df) rs)
+  (struct-copy
+   rstate rs
+   [focus
+    (match (rstate-focus rs)
+      [(focus (ctxt:layer p s l r) v)
+       (define f (focus (ctxt:top) v))
+       (define-values (nl nr nf) (list-move-focus l r f df))
+       (match-define (focus nctxt nv) nf)
+       (focus (ctxt-reparent (ctxt:layer p s nl nr) nctxt) nv)]
+      [f
+       f])]))
+
+(define ((move-meta-focus df) rs)
+  (struct-copy
+   rstate rs
+   [focus
+    (match (rstate-focus rs)
+      [(focus (ctxt:layer (ctxt:layer pp ps pl pr) s l r) v)
+       (define pf (focus (ctxt:layer (ctxt:top) s l r) v))
+       (define-values (npl npr npf) (list-move-focus pl pr pf df))
+       (match-define (focus nctxt nv) npf)
+       (focus (ctxt-reparent (ctxt:layer pp ps npl npr) nctxt) nv)]
+      [f
+       f])]))
+
+(define (do-to-buffer rs f)
+  (match-define (focus ctxt v) (rstate-focus rs))
+  (match-define (view (cursor row col) bid) v)
+  (define b (rstate-buffer rs bid))
+  (begin0 (f b row col)
+          (hash-remove! buffer->bm bid)))
+
+(define ((insert-char c) rs)
+  (do-to-buffer rs
+                (λ (b row col)
+                  (buffer-insert-at! b row col c)
+                  ((move-cursor +1 0) rs))))
+(define ((delete-next) rs)
+  (do-to-buffer rs
+                (λ (b row col)
+                  (buffer-delete-next! b row col)
+                  rs)))
+(define ((delete-previous) rs)
+  (do-to-buffer rs
+                (λ (b row col)
+                  (if (buffer-delete-previous! b row col)
+                    ((move-cursor -1 0) rs)
+                    rs))))
+
+;; Key handler
+(define the-key-handler
+  (match-lambda
+   [(rune-key 'C-q)
+    (exit 0)]
+   [(rune-key 'C-c 'C-x)
+    (exit 0)]
+
+   [(rune-key 'C-<left>)
+    (move-focus -1)]
+   [(rune-key 'C-<right>)
+    (move-focus +1)]
+
+   [(rune-key 'C-<up>)
+    (move-meta-focus -1)]
+   [(rune-key 'C-<down>)
+    (move-meta-focus +1)]
+
+   [(rune-key '<left>)
+    (move-cursor -1 0)]
+   [(rune-key '<right>)
+    (move-cursor +1 0)]
+   [(rune-key '<up>)
+    (move-cursor 0 -1)]
+   [(rune-key '<down>)
+    (move-cursor 0 +1)]
+
+   [(rune-key (? char? c))
+    (insert-char c)]
+   [(rune-key '<return>)
+    (insert-char #\newline)]
+   [(rune-key '<space>)
+    (insert-char #\space)]
+   [(rune-key '<backspace>)
+    (delete-previous)]
+   [(rune-key '<delete>)
+    (delete-next)]
+
+   [(rune-key '<resize>)
+    identity]))
+
+;; Start
 (define (start rs)
   (define ch (make-async-channel))
   (define gf (g:frame ch))
   (rstate-loop rstate-loop ch gf rs))
 
-(define-match-expander rune-key
-  (syntax-rules ()
-    [(_ e ...) (list* e ... _)]))
-
 ;; We take loop as an argument so we can write tests that don't go
 ;; forever. Cute, huh?
 (define (rstate-loop loop ch gf rs)
   (rstate-render! gf rs)
-
-  (define (move-cursor dc dr)
-    (struct-copy
-     rstate rs
-     [focus
-      (let ()
-        (match-define (focus ctxt v) (rstate-focus rs))
-        (match-define (view c bid) v)
-        (define b (rstate-buffer rs bid))
-        (focus ctxt (view (cursor-move c dc dr b) bid)))]))
-
-  (define (list-move-focus l r f df)
-    (cond
-      [(and (not (empty? l)) (negative? df))
-       (values (rest l) (list* f r) (first l))]
-      [(and (not (empty? r)) (positive? df))
-       (values (list* f l) (rest r) (first r))]
-      [else
-       (values l r f)]))
-
-  (define (ctxt-reparent np c)
-    (match c
-      [(ctxt:top)
-       np]
-      [(ctxt:layer p s l r)
-       (ctxt:layer (ctxt-reparent np p) s l r)]))
-
-  (define (move-focus df)
-    (struct-copy
-     rstate rs
-     [focus
-      (match (rstate-focus rs)
-        [(focus (ctxt:layer p s l r) v)
-         (define f (focus (ctxt:top) v))
-         (define-values (nl nr nf) (list-move-focus l r f df))
-         (match-define (focus nctxt nv) nf)
-         (focus (ctxt-reparent (ctxt:layer p s nl nr) nctxt) nv)]
-        [f
-         f])]))
-
-  (define (move-meta-focus df)
-    (struct-copy
-     rstate rs
-     [focus
-      (match (rstate-focus rs)
-        [(focus (ctxt:layer (ctxt:layer pp ps pl pr) s l r) v)
-         (define pf (focus (ctxt:layer (ctxt:top) s l r) v))
-         (define-values (npl npr npf) (list-move-focus pl pr pf df))
-         (match-define (focus nctxt nv) npf)
-         (focus (ctxt-reparent (ctxt:layer pp ps npl npr) nctxt) nv)]
-        [f
-         f])]))
-
-  (define (do-to-buffer f)
-    (match-define (focus ctxt v) (rstate-focus rs))
-    (match-define (view (cursor row col) bid) v)
-    (define b (rstate-buffer rs bid))
-    (begin0 (f b row col)
-            (hash-remove! buffer->bm bid)))
-
-  (define (insert-char c)
-    (do-to-buffer
-     (λ (b row col)
-       (buffer-insert-at! b row col c)
-       (move-cursor +1 0))))
-  (define (delete-next)
-    (do-to-buffer
-     (λ (b row col)
-       (buffer-delete-next! b row col)
-       rs)))
-  (define (delete-previous)
-    (do-to-buffer
-     (λ (b row col)
-       (if (buffer-delete-previous! b row col)
-         (move-cursor -1 0)
-         rs))))
 
   (define next-rs
     (let loop ([h empty])
@@ -364,49 +408,15 @@
        (choice-evt
         (handle-evt ch
                     (λ (ke)
-                      (match (cons ke h)
-                        [(rune-key 'C-q)
-                         (exit 0)]
-                        [(rune-key 'C-c 'C-x)
-                         (exit 0)]
-
-
-                        [(rune-key 'C-<left>)
-                         (move-focus -1)]
-                        [(rune-key 'C-<right>)
-                         (move-focus +1)]
-
-                        [(rune-key 'C-<up>)
-                         (move-meta-focus -1)]
-                        [(rune-key 'C-<down>)
-                         (move-meta-focus +1)]
-
-                        [(rune-key '<left>)
-                         (move-cursor -1 0)]
-                        [(rune-key '<right>)
-                         (move-cursor +1 0)]
-                        [(rune-key '<up>)
-                         (move-cursor 0 -1)]
-                        [(rune-key '<down>)
-                         (move-cursor 0 +1)]
-
-                        [(rune-key (? char? c))
-                         (insert-char c)]
-                        [(rune-key '<return>)
-                         (insert-char #\newline)]
-                        [(rune-key '<space>)
-                         (insert-char #\space)]
-                        [(rune-key '<backspace>)
-                         (delete-previous)]
-                        [(rune-key '<delete>)
-                         (delete-next)]
-
-                        [(rune-key '<resize>)
-                         rs]
-
-                        [x
-                         (eprintf "ignored ~s\n" x)
-                         (loop x)])))))))
+                      (let/ec esc
+                        (define kes (cons ke h))
+                        (define transform
+                          (with-handlers ([exn:misc:match?
+                                           (λ (x)
+                                             (eprintf "ignored ~s\n" kes)
+                                             (esc (loop kes)))])
+                            (the-key-handler kes)))
+                        (transform rs))))))))
 
   (loop loop ch gf next-rs))
 
