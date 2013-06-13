@@ -95,7 +95,7 @@
 (define the-font (make-font #:family 'modern))
 (define-values (char-width char-height)
   (let ()
-    (local-require racket/gui/base)
+    (local-require (only-in racket/gui/base make-screen-bitmap))
     (define text-bm (make-screen-bitmap 200 200))
     (define text-dc (send text-bm make-dc))
     (send text-dc set-font the-font)
@@ -121,7 +121,7 @@
     (match-define (view c bid) v)
 
     ;; Render a buffer
-    (list
+    (list*
      (let ()
        (define b (rstate-buffer rs bid))
 
@@ -222,14 +222,15 @@
             (+ mx (* j ew)))
 
           (values (xof i) my ew mh
-                  (cons (for/list ([sf (in-list l)]
-                                   [rj (in-naturals 1)])
-                          (define j (- i rj))
-                          (focus->elements (xof j) my ew mh #f sf))
-                        (for/list ([sf (in-list r)]
-                                   [aj (in-naturals 1)])
-                          (define j (+ i aj))
-                          (focus->elements (xof j) my ew mh #f sf))))]
+                  (list* (for/list ([sf (in-list l)]
+                                    [rj (in-naturals 1)])
+                           (define j (- i rj))
+                           (focus->elements (xof j) my ew mh #f sf))
+                         (for/list ([sf (in-list r)]
+                                    [aj (in-naturals 1)])
+                           (define j (+ i aj))
+                           (focus->elements (xof j) my ew mh #f sf))
+                         es))]
          ['vertical
           (define i (length l))
           (define eh (/ mh (+ i 1 (length r))))
@@ -237,14 +238,15 @@
             (+ my (* j eh)))
 
           (values mx (yof i) mw eh
-                  (cons (for/list ([sf (in-list l)]
-                                   [rj (in-naturals 1)])
-                          (define j (- i rj))
-                          (focus->elements mx (yof j) mw eh #f sf))
-                        (for/list ([sf (in-list r)]
-                                   [aj (in-naturals 1)])
-                          (define j (+ i aj))
-                          (focus->elements mx (yof j) mw eh #f sf))))])]))
+                  (list* (for/list ([sf (in-list l)]
+                                    [rj (in-naturals 1)])
+                           (define j (- i rj))
+                           (focus->elements mx (yof j) mw eh #f sf))
+                         (for/list ([sf (in-list r)]
+                                    [aj (in-naturals 1)])
+                           (define j (+ i aj))
+                           (focus->elements mx (yof j) mw eh #f sf))
+                         es))])]))
   (define (focus->elements x y w h focused? f)
     (match-define (focus c v) f)
     (define-values (mx my mw mh es) (ctxt->elements x y w h c))
@@ -367,6 +369,7 @@
                          (exit 0)]
                         [(rune-key 'C-c 'C-x)
                          (exit 0)]
+
 
                         [(rune-key 'C-<left>)
                          (move-focus -1)]
