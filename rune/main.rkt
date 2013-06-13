@@ -5,14 +5,24 @@
          racket/match
          racket/async-channel
          rune/lib/timing
-         (prefix-in o: rune/lib/overlay2)
          (prefix-in z: rune/lib/buffer))
 
-(struct buffer (overlay content) #:mutable)
+(struct buffer (overlay row->overlay row*col->overlay content) #:mutable)
 
 (define (path->buffer p)
-  (buffer (make-hasheq (list (cons 'name p)))
-          (z:string->buffer (file->string p))))
+  (define b
+    (buffer (make-hasheq (list (cons 'name p)))
+            (make-hasheq)
+            (make-hash)
+            (z:string->buffer (file->string p))))
+  ;; xxx hack
+  (define brco (buffer-row*col->overlay b))
+  (for ([row (in-range (buffer-max-row b))])
+    (for ([col (in-range (buffer-max-col b row))])
+      (when (zero? (random 2))
+        (define rco (hash-ref! brco (cons row col) make-hasheq))
+        (hash-set! rco 'highlight? #t))))
+  b)
 
 (define (buffer-max-row b)
   (z:buffer-rows (buffer-content b)))
@@ -38,11 +48,12 @@
     (set-buffer-content! b nzb)
     #t))
 
-(define-syntax-rule (overlay-ref (rs b) k dv)
-  (let ([kv k])
-    (hash-ref (buffer-overlay b) kv
-              (λ ()
-                (hash-ref (rstate-overlay rs) kv dv)))))
+(define-syntax overlay-ref
+  (syntax-rules ()
+    [(_ () k dv)
+     dv]
+    [(_ (more ... last) k dv)
+     (hash-ref last k (λ () (overlay-ref (more ...) k dv)))]))
 
 (struct cursor (row col) #:transparent)
 
@@ -99,8 +110,6 @@
          racket/class)
 
 (define buffer->bm (make-hasheq))
-;; xxx hack
-(define buffer->os (make-hasheq))
 
 ;; xxx
 (define the-font (make-font #:family 'modern))
@@ -148,45 +157,31 @@
                   ([r (in-range max-row)])
                 (max mc (buffer-max-col b r))))
 
-            (define overlays
-              (hash-ref!
-               buffer->os bid
-               (λ ()
-                 (for/fold ([odb o:empty-odb])
-                     ([row (in-range max-row)])
-                   (for/fold ([odb odb])
-                       ([col (in-range (buffer-max-col b row))])
-                     (if (zero? (random 2))
-                       (o:odb-set odb (o:rect:point bid row col) 'highlight? #t)
-                       odb))))))
-
             (define bm
               (make-screen-bitmap
                (inexact->exact (ceiling (* max-col char-width)))
                (inexact->exact (ceiling (* max-row char-height)))))
             (define bm-dc
               (send bm make-dc))
+            (define rs-o (rstate-overlay rs))
+            (define b-o (buffer-overlay b))
 
             (send bm-dc set-font the-font)
 
             (for ([row (in-range max-row)])
               (define l (buffer-line b row))
-
+              (define row-o (hash-ref (buffer-row->overlay b) row make-hasheq))
               ;; xxx line at once: 178ms
               ;; (send bm-dc draw-text l 0 (* row char-height))
 
               (for ([char (in-string l)]
-                    [col (in-naturals)])
-
-                (define os
-                  (if #t
-                    ;; slow (list): 7000ms
-                    ;; fast (hash): 200-500 ms
-                    (o:odb-hash overlays (o:rect:point bid row col))
-                    ;; fake:  600ms
-                    (hasheq 'highlight? (if (zero? (random 2)) #t #f))))
+                    [col (in-naturals)])                
+                (define col-o (hash-ref (buffer-row*col->overlay b) (cons row col) make-hasheq))
                 (send bm-dc set-text-foreground
-                      (if (hash-ref os 'highlight? #f)
+                      ;; slow (list): 7000ms
+                      ;; fast (hash): 200-500 ms
+                      ;; fake:  600ms
+                      (if (overlay-ref (rs-o b-o row-o col-o) 'highlight? #f)
                         "red"
                         "black"))
                 (send bm-dc draw-text (string char)
@@ -266,8 +261,11 @@
   (define-values (et elements)
     (time-it (focus->elements 0 0 full-w full-h #t (rstate-focus rs))))
   (g:frame-perf! gf 'elements et)
+  (define b (view-buffer rs (focus-view (rstate-focus rs))))
+  (define rs-o (rstate-overlay rs))
+  (define b-o (buffer-overlay b))
   (define focused-label
-    (overlay-ref (rs (view-buffer rs (focus-view (rstate-focus rs)))) 'name ""))
+    (overlay-ref (rs-o b-o) 'name ""))
   (g:frame-refresh! gf focused-label elements)
   (void))
 
