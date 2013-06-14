@@ -3,6 +3,7 @@
          racket/draw
          racket/match
          racket/class
+         rune/lib/context
          rune/lib/tree
          rune/lib/colors
          (only-in racket/gui/base make-screen-bitmap))
@@ -96,7 +97,7 @@
            [char char?]))
   [rename
    make-drawer drawer
-   (-> any/c colors/c string? nat?
+   (-> context/c colors/c string? nat?
        drawer?)]
   [drawer-char-width
    (-> drawer?

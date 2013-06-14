@@ -7,6 +7,7 @@
          racket/class
          rune/lib/tree
          rune/lib/colors
+         rune/lib/context
          rune/lib/timing)
 
 (struct frame (frame% canvas% thread context elements-box label-box perf-hash))
@@ -179,7 +180,7 @@
        exact-nonnegative-integer?)]
   [frame-context
    (-> frame?
-       any/c)]
+       context/c)]
   [frame-perf!
    (-> frame?
        symbol?

@@ -2,6 +2,7 @@
 (require racket/class
          racket/contract
          racket/draw
+         rune/lib/context
          (for-syntax racket/base
                      racket/syntax
                      syntax/parse))
@@ -39,7 +40,7 @@
   [color/c contract?]
   [colors/c contract?]
   [set-colors-context!
-   (-> colors/c any/c
+   (-> colors/c context/c
        void)]
   [colors-ref
    (-> colors/c color/c
