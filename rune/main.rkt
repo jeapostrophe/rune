@@ -423,6 +423,7 @@
   (define ch (make-async-channel))
   (define gf (g:frame color-scheme c:bg ch))
   (define d (d:drawer (g:frame-context gf) color-scheme
+                      ;; config: font
                       "Bitstream Vera Sans Mono" 10))
   (rstate-loop rstate-loop ch gf d rs))
 
@@ -456,10 +457,11 @@
   (loop loop ch gf d next-rs))
 
 (module+ main
-  (require racket/runtime-path)
+  ;; config: load/save from file
+  (require racket/runtime-path)  
   (define-runtime-path exp "../TODO.org")
   (define ex (path->string exp))
-  (start
+  (start   
    (rstate (hasheq)
            (hasheq 0
                    (path->buffer ex))
