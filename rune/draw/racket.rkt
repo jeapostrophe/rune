@@ -8,7 +8,7 @@
 
 (struct drawer (font% char-width char-height))
 (struct glyph (row col fg bg char))
-(struct canvas (char-width char-height arow acol bm bm-dc) #:mutable)
+(struct canvas (bg-c char-width char-height arow acol bm bm-dc) #:mutable)
 
 (define (make-drawer face size)
   (define the-font (make-font #:face face #:family 'modern #:size size))
@@ -19,7 +19,7 @@
     (send text-dc get-text-extent " "))
   (drawer the-font width height))
 
-(define (make-canvas d erow ecol)
+(define (make-canvas d erow ecol bg-c)
   (match-define (drawer the-font char-width char-height) d)
   (define arow (* 2 erow))
   (define acol (* 2 ecol))
@@ -28,13 +28,14 @@
      (inexact->exact (ceiling (* acol char-width)))
      (inexact->exact (ceiling (* arow char-height)))))
   (define bm-dc (send bm make-dc))
-  (send bm-dc clear)
+  (send bm-dc set-background bg-c)
+  (send bm-dc clear)  
   (send bm-dc set-font the-font)
-  (canvas char-width char-height arow acol bm bm-dc))
+  (canvas bg-c char-width char-height arow acol bm bm-dc))
 
 (define (canvas-refresh! c nrow ncol t)
   ;; xxx check nrow & ncol
-  (match-define (canvas char-width char-height arow acol bm bm-dc) c)
+  (match-define (canvas bg-c char-width char-height arow acol bm bm-dc) c)
   (define gcount
     (tree-iter!
      (match-lambda
@@ -78,6 +79,7 @@
    (-> drawer?
        nat?
        nat?
+       (is-a?/c color%)
        canvas?)]
   [rename
    canvas-bm canvas-bitmap

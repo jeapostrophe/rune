@@ -153,7 +153,7 @@
             buffer->c bid
             (λ ()
               (eprintf "canvas gone: ~a\n" bid)
-              (d:canvas the-drawer max-row max-col))))
+              (d:canvas the-drawer max-row max-col c:background))))
 
          (d:canvas-refresh!
           b-c max-row max-col
@@ -394,8 +394,7 @@
 ;; Start
 (define (start rs)
   (define ch (make-async-channel))
-  ;; xxx give it the background color
-  (define gf (g:frame ch))
+  (define gf (g:frame c:background ch))
   (rstate-loop rstate-loop ch gf rs))
 
 ;; We take loop as an argument so we can write tests that don't go

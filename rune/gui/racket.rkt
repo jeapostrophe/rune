@@ -58,12 +58,13 @@
 (struct outline element (c))
 (struct bitmap element (bm dx dy))
 
-(define (make-frame ch)
+(define (make-frame bg-c ch)
   (define new-es (make-eventspace))
   (parameterize ([current-eventspace new-es])
     (define rf (new frame% [label ""]))
     (define elements-box (box (void)))
     (define (top-draw! c dc)
+      (send dc set-background bg-c)
       (send dc clear)
       (define-values (ft ecount)
         (time-it
@@ -146,7 +147,8 @@
        boolean?)]
   [rename
    make-frame frame
-   (-> async-channel? ;; xxx contract to correct symbols
+   (-> (is-a?/c color%) ;; xxx
+       async-channel? ;; xxx contract to correct symbols
        frame?)]
   [frame-width
    (-> frame?
