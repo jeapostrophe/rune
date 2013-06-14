@@ -191,10 +191,8 @@
     (define ew (- w hmargin))
     (define eh (- h vmargin))
 
-    (define how-many-rows-fit (/ eh char-height))
-    (define centered-rows (/ how-many-rows-fit 2))
-    (define centered-row-pxs (* centered-rows char-height))
-    (define dy
+    (define (centered-d eh cursor-bm-y b-bm-h)
+      (define centered-row-pxs (/ eh 2))
       (cond
         ;; If the cursor is so early, then we can't move things
         ;; backward, because we'd run off the screen.
@@ -206,8 +204,9 @@
          (- b-bm-h eh)]
         [else
          (- cursor-bm-y centered-row-pxs)]))
-    ;; xxx
-    (define dx 0)
+
+    (define dy (centered-d eh cursor-bm-y b-bm-h))
+    (define dx (centered-d ew cursor-bm-x b-bm-w))
 
     (define cursor-x (- (+ x hmargin (* col char-width)) dx))
     (define cursor-y (- (+ y vmargin (* row char-height)) dy))
