@@ -1,5 +1,6 @@
 #lang racket/base
-(require ffi/unsafe)
+(require opengl
+         ffi/unsafe)
 (module+ test
   (require rackunit))
 
@@ -97,4 +98,71 @@
    [tex _uint32]))
 
 (module+ test
-  (print-bandwidth "block" _block-info))
+  (print-bandwidth "block" _block-info)
+
+  ;; 1. Using individual textures is obvious. It would be "slow"
+  ;; because I would rebind for every window.
+
+  ;; 2. If I used a single 2DTextureArray I could support all buffers
+  ;; at the same time, but this would be a problem, because I don't
+  ;; think I can mandate that, for instance, other X11 windows will
+  ;; draw into my texture. In addition, they would all have to be the
+  ;; same size, so I'd waste space and have painful rebinding.
+
+  ;; 3. One idea is to divide the M textures into N groups of size
+  ;; GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS and make N draw calls. I
+  ;; could do this, if I could have the vertex shader use a dynamic
+  ;; reference (from the block-info) to figure out what the sampler
+  ;; was from a large uniform array. Unfortunately, this is not
+  ;; possible because a uniform array reference has to be constant.
+
+  ;; 4. I could divide the M textures into N groups of size
+  ;; GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS. I would then make M calls to
+  ;; glUniformi to set what the current texture was and make M calls
+  ;; to draw. When N=1, then this is very fast because I never need to
+  ;; do any bind operations. When N>1, then this is really equivalent
+  ;; to 1, because I need to rebind every texture every frame.  A blog
+  ;; (http://outerra.blogspot.com/2012/11/opengl-notes-2-texture-bind-performance.html)
+  ;; suggests this would be very fast. On my machine this is
+  ;; 32... which is quite small.
+
+  (printf "Min possible is ~a\n" 80)
+  (printf "Max possible is ~a\n" GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS)
+  (require ffi/vector
+           racket/class
+           racket/gui/base)
+
+  (let ()
+    (define frame
+      (new frame%
+           [label ""]
+           [style '(hide-menu-bar
+                    no-resize-border
+                    no-caption
+                    no-system-menu)]))
+    (define this-canvas%
+      (class canvas%
+        (define/override (on-paint)
+          (define dc (send this get-dc))
+          (define glctx (send dc get-gl-context))
+          (send glctx call-as-current
+                (λ ()
+                  (printf "Actual is ~a\n"
+                          (s32vector-ref (glGetIntegerv GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS) 0))
+                  (exit 1))))
+
+        (super-new)))
+
+    (define config
+      (new gl-config%))
+    (send config set-double-buffered #t)
+
+    (define canvas
+      (new this-canvas%
+           [parent frame]
+           [gl-config config]
+           [style '(gl no-autoclear)]))
+
+    (send frame show #t)
+    (send canvas focus)
+    (send canvas refresh-now)))

@@ -1,6 +1,7 @@
 #lang racket/base
 (require racket/gui/base
          racket/contract
+         racket/list
          racket/async-channel
          racket/match
          racket/class
@@ -70,16 +71,32 @@
       (send dc clear)
       (define-values (ft ecount)
         (time-it
-         (tree-iter!
-          (match-lambda
-           [(outline x y w h cr)
-            (define c (colors-ref colors cr))
-            (send dc set-pen c 2 'solid)
-            (send dc set-brush c 'transparent)
-            (send dc draw-rectangle x y w h)]
-           [(bitmap x y w h bm dx dy)
-            (send dc draw-bitmap-section bm x y dx dy (max 0 w) (max 0 h))])
-          (unbox elements-box))))
+         (let ()
+           (define outlines empty)
+           (define bitmaps (make-hasheq))
+
+           (define ecount
+             (tree-iter!
+              (match-lambda
+               [(? outline? o)
+                (set! outlines (cons o outlines))]
+               [(? bitmap? b)
+                (hash-update! bitmaps (bitmap-bm b) (λ (x) (cons b x)) empty)])
+              (unbox elements-box)))
+
+           (for ([(bm bs) (in-hash bitmaps)])
+             (for ([b (in-list bs)])
+               (match-define (bitmap x y w h bm dx dy) b)
+               (send dc draw-bitmap-section bm x y dx dy (max 0 w) (max 0 h))))
+
+           (for ([o (in-list outlines)])
+             (match-define (outline x y w h cr) o)
+             (define c (colors-ref colors cr))
+             (send dc set-pen c 2 'solid)
+             (send dc set-brush c 'transparent)
+             (send dc draw-rectangle x y w h))
+           
+           ecount)))
       (frame-perf! gf 'frame-draw ft)
       (eprintf "drew ~a elements\n" ecount))
     (define c
@@ -121,7 +138,7 @@
             (tl 'buffers)
             (tl 'elements)
             (tl 'frame-draw)
-            (real->decimal-string 
+            (real->decimal-string
              (- (hash-ref h 'frame-render 0)
                 (hash-ref h 'frame-draw 0)))
             (unbox (frame-label-box gf))))
