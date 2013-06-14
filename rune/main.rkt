@@ -178,19 +178,43 @@
   (g:frame-perf! gf 'buffers bt)
 
   (define (view->elements x y w h focused? v)
-    (match-define (view c bid) v)
+    (match-define (view (cursor row col) bid) v)
+
+    (define cursor-bm-y (* row char-height))
+    (define cursor-bm-x (* col char-width))
+
+    (define b (rstate-buffer rs bid))
+    (define b-c (buffer-canvas b))
+    (define b-bm (d:canvas-bitmap b-c))
+    (define b-bm-w (d:canvas-bitmap-width b-c))
+    (define b-bm-h (d:canvas-bitmap-height b-c))
+    (define ew (- w hmargin))
+    (define eh (- h vmargin))
+
+    (define how-many-rows-fit (/ eh char-height))
+    (define centered-rows (/ how-many-rows-fit 2))
+    (define centered-row-pxs (* centered-rows char-height))
+    (define dy
+      (cond
+        ;; If the cursor is so early, then we can't move things
+        ;; backward, because we'd run off the screen.
+        [(< cursor-bm-y centered-row-pxs)
+         0]
+        ;; If the cursor is so late, then we can't move things
+        ;; forward
+        [(< (- b-bm-h centered-row-pxs) cursor-bm-y)
+         (- b-bm-h eh)]
+        [else
+         (- cursor-bm-y centered-row-pxs)]))
+    ;; xxx
+    (define dx 0)
+
+    (define cursor-x (- (+ x hmargin (* col char-width)) dx))
+    (define cursor-y (- (+ y vmargin (* row char-height)) dy))
 
     ;; Render a buffer
     (list*
-     (let ()
-       (define b (rstate-buffer rs bid))
-       (define b-c (buffer-canvas b))
-       (define b-bm (d:canvas-bitmap b-c))
-       (g:bitmap (+ x hmargin) (+ y vmargin)
-                 (- w hmargin) (- h vmargin)
-                 b-bm
-                 ;; xxx figure these out
-                 0 0))
+     (g:bitmap (+ x hmargin) (+ y vmargin) ew eh b-bm dx dy)
 
      ;; Outline
      (g:outline x y w h
@@ -199,17 +223,13 @@
                   c:text))
 
      ;; Cursor
-     (let ()
-       (match-define (cursor row col) c)
-       (define cursor-x (+ x hmargin (* col char-width)))
-       (define cursor-y (+ y vmargin (* row char-height)))
-       (unless (or (< (+ x w) (+ cursor-x char-width))
-                   (< (+ y h) (+ cursor-y char-height)))
-         (g:outline cursor-x cursor-y
-                    char-width char-height
-                    (if focused?
-                      c:outline
-                      c:text))))))
+     (unless (or (< (+ x w) (+ cursor-x char-width))
+                 (< (+ y h) (+ cursor-y char-height)))
+       (g:outline cursor-x cursor-y
+                  char-width char-height
+                  (if focused?
+                    c:outline
+                    c:text)))))
 
   (define (ctxt->elements x y w h c)
     (match c

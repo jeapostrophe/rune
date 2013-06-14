@@ -77,17 +77,17 @@
            [(bitmap x y w h bm dx dy)
             (send dc draw-bitmap-section bm x y dx dy (max 0 w) (max 0 h))])
           (unbox elements-box))))
-      (when gf (frame-perf! gf 'frame-draw ft))
+      (frame-perf! gf 'frame-draw ft)
       (eprintf "drew ~a elements\n" ecount))
     (define c
       (new gf-canvas% [parent rf]
            [style '(no-autoclear transparent)]
            [paint-callback top-draw!]
            [event-ch ch]))
-    (send c focus)
-    (send rf show #t)
     (define t (thread (λ () (yield never-evt))))
     (define gf (frame rf c t elements-box (box "") (make-hasheq)))
+    (send c focus)
+    (send rf show #t)
     gf))
 
 (define (frame-width gf)
