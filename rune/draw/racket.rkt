@@ -34,6 +34,7 @@
     (define new-rrow (max (* 2 old-rrow) nrow))
     (define new-rcol (max (* 2 old-rcol) ncol))
     (define new-bm
+      ;; OpenGL: Allocate a new texture with this size.
       (make-screen-bitmap
        (inexact->exact (ceiling (* new-rcol char-width)))
        (inexact->exact (ceiling (* new-rrow char-height)))))
@@ -58,6 +59,7 @@
                         _ _ _ _ bm)
                 c)
 
+  ;; OpenGL: Render to the generated texture
   (define bm-dc (send bm make-dc))
 
   (define bg-c (colors-ref colors bg-cr))
@@ -65,6 +67,11 @@
   (send bm-dc clear)
   (send bm-dc set-font the-font)
 
+  ;; OpenGL: Cache a texture atlas of the characters used from the
+  ;; font. As you create the vector of things to draw, see if it
+  ;; changes. If it doesn't, then you go on, otherwise you need to
+  ;; generate it and try again. Maybe recall yourself to make the code
+  ;; simpler. Draw with a shader like the Get Bonus shader.
   (define gcount
     (tree-iter!
      (match-lambda

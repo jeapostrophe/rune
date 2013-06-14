@@ -63,12 +63,17 @@
 
 (define (make-frame colors bg-cr ch)
   (define new-es (make-eventspace))
+  ;; OpenGL: Configure an OpenGL canvas
   (parameterize ([current-eventspace new-es])
     (define rf (new frame% [label ""]))
     (define elements-box (box (void)))
     (define ctxt #f)
     (define (top-draw! c dc)
+      ;; OpenGL: You need the dc to get the context, so cache whether
+      ;; you've done this yet.
       (set-colors-context! colors ctxt)
+
+      ;; OpenGL: Render to the screen
       (define bg-c (colors-ref colors bg-cr))
       (send dc set-background bg-c)
       (send dc clear)
@@ -87,11 +92,15 @@
                 (hash-update! bitmaps (bitmap-bm b) (λ (x) (cons b x)) empty)])
               (unbox elements-box)))
 
+           ;; OpenGL: Turn on the bitmap shader
            (for ([(bm bs) (in-hash bitmaps)])
+             ;; OpenGL: Bind the texture for 'bm' and then send this
+             ;; worklist to the shader
              (for ([b (in-list bs)])
                (match-define (bitmap x y w h bm dx dy) b)
                (send dc draw-bitmap-section bm x y dx dy (max 0 w) (max 0 h))))
 
+           ;; OpenGL: Turn on the outine shader and send this worklist
            (for ([o (in-list outlines)])
              (match-define (outline x y w h cr) o)
              (define c (colors-ref colors cr))
@@ -99,9 +108,9 @@
              (send dc set-brush c 'transparent)
              (send dc draw-rectangle x y w h))
 
-           ecount)))
+           (list ecount (add1 (hash-count bitmaps))))))
       (frame-perf! gf 'frame-draw ft)
-      (eprintf "drew ~a elements\n" ecount))
+      (eprintf "drew ~a (elements, distinct things)\n" ecount))
     (define c
       (new gf-canvas% [parent rf]
            [style '(no-autoclear transparent)]

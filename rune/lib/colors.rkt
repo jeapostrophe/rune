@@ -30,7 +30,12 @@
   (apply vector/c (build-list 16 (λ (i) real-color/c))))
 (define color/c
   (integer-in 0 15))
+
+;; OpenGL: Turn colors-ref into the identity function/macro.
 (define colors-ref vector-ref)
+
+;; OpenGL: Use the context to load the colors into a texture
+;; and provide access to what it is
 (define (set-colors-context! cs ctxt)
   (void))
 
