@@ -30,12 +30,17 @@
 (define color/c
   (integer-in 0 15))
 (define colors-ref vector-ref)
+(define (set-colors-context! cs ctxt)
+  (void))
 
 (provide
  define-colors
  (contract-out
   [color/c contract?]
   [colors/c contract?]
+  [set-colors-context!
+   (-> colors/c any/c
+       void)]
   [colors-ref
    (-> colors/c color/c
        real-color/c)]))

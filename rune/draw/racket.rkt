@@ -7,25 +7,25 @@
          rune/lib/colors
          (only-in racket/gui/base make-screen-bitmap))
 
-(struct drawer (colors font% char-width char-height))
+(struct drawer (ctxt colors font% char-width char-height))
 (struct glyph (row col fg bg char))
 (struct canvas (bg-cr d rrow rcol arow acol bm) #:mutable)
 
-(define (make-drawer colors face size)
+(define (make-drawer ctxt colors face size)
   (define the-font (make-font #:face face #:family 'modern #:size size))
   (define text-bm (make-screen-bitmap 200 200))
   (define text-dc (send text-bm make-dc))
   (send text-dc set-font the-font)
   (define-values (width height xtra-below xtra-above)
     (send text-dc get-text-extent " "))
-  (drawer colors the-font width height))
+  (drawer ctxt colors the-font width height))
 
 (define (make-canvas d bg-cr)
-  (match-define (drawer _ _ char-width char-height) d)
+  (match-define (drawer _ _ _ char-width char-height) d)
   (canvas bg-cr d -1 -1 -1 -1 #f))
 
 (define (ensure-size! c nrow ncol)
-  (match-define (canvas _ (drawer _ _ char-width char-height)
+  (match-define (canvas _ (drawer _ _ _ char-width char-height)
                         old-rrow old-rcol old-arow old-acol _)
                 c)
   (unless (and (<= nrow old-rrow)
@@ -45,15 +45,15 @@
   (set-canvas-acol! c ncol))
 
 (define (canvas-bitmap-width c)
-  (match-define (canvas _ (drawer _ _ char-width char-height) _ _ arow acol _) c)
+  (match-define (canvas _ (drawer _ _ _ char-width char-height) _ _ arow acol _) c)
   (* acol char-width))
 (define (canvas-bitmap-height c)
-  (match-define (canvas _ (drawer _ _ char-width char-height) _ _ arow acol _) c)
+  (match-define (canvas _ (drawer _ _ _ char-width char-height) _ _ arow acol _) c)
   (* arow char-height))
 
 (define (canvas-refresh! c nrow ncol t)
   (ensure-size! c nrow ncol)
-  (match-define (canvas bg-cr (drawer colors the-font char-width char-height)
+  (match-define (canvas bg-cr (drawer _ colors the-font char-width char-height)
                         _ _ _ _ bm)
                 c)
 
@@ -96,7 +96,7 @@
            [char char?]))
   [rename
    make-drawer drawer
-   (-> colors/c string? nat?
+   (-> any/c colors/c string? nat?
        drawer?)]
   [drawer-char-width
    (-> drawer?

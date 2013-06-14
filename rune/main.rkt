@@ -423,7 +423,8 @@
   (define ch (make-async-channel))
   ;; xxx make color-scheme and d depend on gf's "context" (i.e. opengl)
   (define gf (g:frame color-scheme c:bg ch))
-  (define d (d:drawer color-scheme "Bitstream Vera Sans Mono" 10))
+  (define d (d:drawer (g:frame-context gf) color-scheme
+                      "Bitstream Vera Sans Mono" 10))
   (rstate-loop rstate-loop ch gf d rs))
 
 ;; We take loop as an argument so we can write tests that don't go

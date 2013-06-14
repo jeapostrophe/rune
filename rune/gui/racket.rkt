@@ -9,7 +9,7 @@
          rune/lib/colors
          rune/lib/timing)
 
-(struct frame (frame% canvas% thread elements-box label-box perf-hash))
+(struct frame (frame% canvas% thread context elements-box label-box perf-hash))
 
 (define (key-event->rune-key ke)
   (define kc
@@ -65,8 +65,10 @@
   (parameterize ([current-eventspace new-es])
     (define rf (new frame% [label ""]))
     (define elements-box (box (void)))
-    (define bg-c (colors-ref colors bg-cr))
+    (define ctxt #f)
     (define (top-draw! c dc)
+      (set-colors-context! colors ctxt)
+      (define bg-c (colors-ref colors bg-cr))
       (send dc set-background bg-c)
       (send dc clear)
       (define-values (ft ecount)
@@ -95,7 +97,7 @@
              (send dc set-pen c 2 'solid)
              (send dc set-brush c 'transparent)
              (send dc draw-rectangle x y w h))
-           
+
            ecount)))
       (frame-perf! gf 'frame-draw ft)
       (eprintf "drew ~a elements\n" ecount))
@@ -105,7 +107,7 @@
            [paint-callback top-draw!]
            [event-ch ch]))
     (define t (thread (λ () (yield never-evt))))
-    (define gf (frame rf c t elements-box (box "") (make-hasheq)))
+    (define gf (frame rf c t ctxt elements-box (box "") (make-hasheq)))
     (send c focus)
     (send rf show #t)
     gf))
@@ -175,6 +177,9 @@
   [frame-height
    (-> frame?
        exact-nonnegative-integer?)]
+  [frame-context
+   (-> frame?
+       any/c)]
   [frame-perf!
    (-> frame?
        symbol?
