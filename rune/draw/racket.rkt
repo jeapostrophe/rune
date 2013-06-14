@@ -22,15 +22,17 @@
   (drawer ctxt colors the-font width height))
 
 (define (make-canvas d bg-cr)
-  (match-define (drawer _ _ _ char-width char-height) d)
   (canvas bg-cr d -1 -1 -1 -1 #f))
 
 (define (ensure-size! c nrow ncol)
-  (match-define (canvas _ (drawer _ _ _ char-width char-height)
-                        old-rrow old-rcol old-arow old-acol _)
-                c)
+  (define old-rrow (canvas-rrow c))
+  (define old-rcol (canvas-rcol c))
   (unless (and (<= nrow old-rrow)
                (<= ncol old-rcol))
+    (define d (canvas-d c))
+    (define char-width (drawer-char-width d))
+    (define char-height (drawer-char-height d))
+
     (define new-rrow (max (* 2 old-rrow) nrow))
     (define new-rcol (max (* 2 old-rcol) ncol))
     (define new-bm
@@ -47,17 +49,14 @@
   (set-canvas-acol! c ncol))
 
 (define (canvas-bitmap-width c)
-  (match-define (canvas _ (drawer _ _ _ char-width char-height) _ _ arow acol _) c)
-  (* acol char-width))
+  (* (canvas-acol c) (drawer-char-width (canvas-d c))))
 (define (canvas-bitmap-height c)
-  (match-define (canvas _ (drawer _ _ _ char-width char-height) _ _ arow acol _) c)
-  (* arow char-height))
+  (* (canvas-arow c) (drawer-char-height (canvas-d c))))
 
 (define (canvas-refresh! c nrow ncol t)
   (ensure-size! c nrow ncol)
-  (match-define (canvas bg-cr (drawer _ colors the-font char-width char-height)
-                        _ _ _ _ bm)
-                c)
+  (match-define (canvas bg-cr d _ _ _ _ bm) c)
+  (match-define (drawer ctxt colors the-font char-width char-height) d)
 
   ;; OpenGL: Render to the generated texture
   (define bm-dc (send bm make-dc))
@@ -90,6 +89,7 @@
        (send bm-dc set-text-foreground fg)
        (send bm-dc draw-text (string char) x y)])
      t))
+
   (eprintf "drew ~a glyphs\n" gcount)
   (void))
 
