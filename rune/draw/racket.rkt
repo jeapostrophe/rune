@@ -9,7 +9,7 @@
 
 (struct drawer (colors font% char-width char-height))
 (struct glyph (row col fg bg char))
-(struct canvas (bg-cr d rrow rcol arow acol bm bm-dc) #:mutable)
+(struct canvas (bg-cr d rrow rcol arow acol bm) #:mutable)
 
 (define (make-drawer colors face size)
   (define the-font (make-font #:face face #:family 'modern #:size size))
@@ -22,11 +22,11 @@
 
 (define (make-canvas d bg-cr)
   (match-define (drawer _ _ char-width char-height) d)
-  (ensure-size! (canvas bg-cr d 0 0 0 0 #f #f) 0 0))
+  (canvas bg-cr d -1 -1 -1 -1 #f))
 
 (define (ensure-size! c nrow ncol)
-  (match-define (canvas bg-cr (drawer colors the-font char-width char-height)
-                        old-rrow old-rcol old-arow old-acol old-bm old-bm-dc)
+  (match-define (canvas _ (drawer _ _ char-width char-height)
+                        old-rrow old-rcol old-arow old-acol _)
                 c)
   (unless (and (<= nrow old-rrow)
                (<= ncol old-rcol))
@@ -36,40 +36,34 @@
       (make-screen-bitmap
        (inexact->exact (ceiling (* new-rcol char-width)))
        (inexact->exact (ceiling (* new-rrow char-height)))))
-    (define new-bm-dc (send new-bm make-dc))
-    (define bg-c (colors-ref colors bg-cr))
-    (send new-bm-dc set-background bg-c)
-    (send new-bm-dc clear)
-    (send new-bm-dc set-font the-font)
-
-    (when old-bm
-      (send new-bm-dc draw-bitmap-section old-bm
-            0 0
-            0 0
-            (send old-bm get-width)
-            (send old-bm get-height)))
 
     (set-canvas-rrow! c new-rrow)
     (set-canvas-rcol! c new-rcol)
-    (set-canvas-bm! c new-bm)
-    (set-canvas-bm-dc! c new-bm-dc))
+    (set-canvas-bm! c new-bm))
 
   (set-canvas-arow! c nrow)
-  (set-canvas-acol! c ncol)
-  c)
+  (set-canvas-acol! c ncol))
 
 (define (canvas-bitmap-width c)
-  (match-define (canvas _ (drawer _ _ char-width char-height) _ _ arow acol _ bm-dc) c)
+  (match-define (canvas _ (drawer _ _ char-width char-height) _ _ arow acol _) c)
   (* acol char-width))
 (define (canvas-bitmap-height c)
-  (match-define (canvas _ (drawer _ _ char-width char-height) _ _ arow acol _ bm-dc) c)
+  (match-define (canvas _ (drawer _ _ char-width char-height) _ _ arow acol _) c)
   (* arow char-height))
 
 (define (canvas-refresh! c nrow ncol t)
-  (match-define (canvas _ (drawer colors _ char-width char-height) _ _ _ _ _ bm-dc)
-                (ensure-size! c nrow ncol))
-  ;; xxx remove if i do "smart" redisplay
+  (ensure-size! c nrow ncol)
+  (match-define (canvas bg-cr (drawer colors the-font char-width char-height)
+                        _ _ _ _ bm)
+                c)
+
+  (define bm-dc (send bm make-dc))
+
+  (define bg-c (colors-ref colors bg-cr))
+  (send bm-dc set-background bg-c)
   (send bm-dc clear)
+  (send bm-dc set-font the-font)
+
   (define gcount
     (tree-iter!
      (match-lambda
@@ -121,10 +115,10 @@
        ;; xxx
        (is-a?/c bitmap%))]
   [canvas-bitmap-width
-   (-> canvas? 
+   (-> canvas?
        real?)]
   [canvas-bitmap-height
-   (-> canvas? 
+   (-> canvas?
        real?)]
   [canvas-refresh!
    (-> canvas?
