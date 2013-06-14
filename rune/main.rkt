@@ -16,7 +16,7 @@
 
 (define (path->buffer p)
   (define b
-    (buffer (d:canvas the-drawer c:bg)
+    (buffer #f
             #t
             (make-hasheq (list (cons 'name p)))
             (make-hasheq)
@@ -159,7 +159,12 @@
          (define max-row (buffer-max-row b))
          (define max-col (buffer-max-cols b))
 
-         (define b-c (buffer-canvas b))
+         (define b-c 
+           (cond [(buffer-canvas b) => (λ (x) x)]
+                 [else
+                  (define c (d:canvas the-drawer c:bg))
+                  (set-buffer-canvas! b c)
+                  c]))
 
          (d:canvas-refresh!
           b-c max-row max-col
