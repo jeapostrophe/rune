@@ -10,9 +10,8 @@
 (struct glyph (row col fg bg char))
 (struct canvas (char-width char-height arow acol bm bm-dc) #:mutable)
 
-(define (make-drawer face)
-  ;; xxx face
-  (define the-font (make-font #:family 'modern))
+(define (make-drawer face size)
+  (define the-font (make-font #:face face #:family 'modern #:size size))
   (define text-bm (make-screen-bitmap 200 200))
   (define text-dc (send text-bm make-dc))
   (send text-dc set-font the-font)
@@ -66,7 +65,7 @@
            [char char?]))
   [rename
    make-drawer drawer
-   (-> string?
+   (-> string? nat?
        drawer?)]
   [drawer-char-width
    (-> drawer?

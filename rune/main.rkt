@@ -109,8 +109,7 @@
 
 ;; xxx integrate into buffer
 (define buffer->c (make-hasheq))
-;; xxx change font
-(define the-drawer (d:drawer ""))
+(define the-drawer (d:drawer "Bitstream Vera Sans Mono" 10))
 
 ;; xxx
 (define-values
