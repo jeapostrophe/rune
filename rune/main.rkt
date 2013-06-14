@@ -187,8 +187,7 @@
        (define b-c (buffer-canvas b))
        (define b-bm (d:canvas-bitmap b-c))
        (g:bitmap (+ x hmargin) (+ y vmargin)
-                 ;; xxx put the negative check on the other side
-                 (max 0 (- w hmargin)) (max 0 (- h vmargin))
+                 (- w hmargin) (- h vmargin)
                  b-bm
                  ;; xxx figure these out
                  0 0))

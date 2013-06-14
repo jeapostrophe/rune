@@ -75,7 +75,7 @@
             (send dc set-brush c 'transparent)
             (send dc draw-rectangle x y w h)]
            [(bitmap x y w h bm dx dy)
-            (send dc draw-bitmap-section bm x y dx dy w h)])
+            (send dc draw-bitmap-section bm x y dx dy (max 0 w) (max 0 h))])
           (unbox elements-box))))
       (when gf (frame-perf! gf 'frame-draw ft))
       (eprintf "drew ~a elements\n" ecount))
