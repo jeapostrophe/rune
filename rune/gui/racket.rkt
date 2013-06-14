@@ -59,11 +59,12 @@
 (struct outline element (c))
 (struct bitmap element (bm dx dy))
 
-(define (make-frame bg-c ch)
+(define (make-frame colors bg-cr ch)
   (define new-es (make-eventspace))
   (parameterize ([current-eventspace new-es])
     (define rf (new frame% [label ""]))
     (define elements-box (box (void)))
+    (define bg-c (colors-ref colors bg-cr))
     (define (top-draw! c dc)
       (send dc set-background bg-c)
       (send dc clear)
@@ -71,7 +72,8 @@
         (time-it
          (tree-iter!
           (match-lambda
-           [(outline x y w h c)
+           [(outline x y w h cr)
+            (define c (colors-ref colors cr))
             (send dc set-pen c 2 'solid)
             (send dc set-brush c 'transparent)
             (send dc draw-rectangle x y w h)]
@@ -147,7 +149,7 @@
        boolean?)]
   [rename
    make-frame frame
-   (-> color/c
+   (-> colors/c color/c
        async-channel? ;; xxx contract to correct symbols
        frame?)]
   [frame-width

@@ -116,8 +116,6 @@
 
 (define-rstate-lookup rstate-buffer rstate-buffers "Unknown buffer ~e")
 
-(define the-drawer (d:drawer "Bitstream Vera Sans Mono" 10))
-
 (define-colors
   color-scheme
   ui-lo     #x00 #x2b #x36
@@ -136,6 +134,8 @@
   blue      #x26 #x8b #xd2
   cyan      #x2a #xa1 #x98
   green     #x85 #x99 #x00)
+
+(define the-drawer (d:drawer color-scheme "Bitstream Vera Sans Mono" 10))
 
 (define (rstate-render! gf rs)
   (define full-w (g:frame-width gf))
@@ -216,7 +216,7 @@
 
     (define dy (centered-d eh cursor-bm-y b-bm-h))
     (define dx (centered-d ew cursor-bm-x
-                           ;; xxx It is unclear what the right choice is
+                           ;; It is unclear what the right choice is
                            (if #t
                              b-bm-w
                              (* (add1 (buffer-max-col b row)) char-width))))
@@ -424,7 +424,7 @@
 ;; Start
 (define (start rs)
   (define ch (make-async-channel))
-  (define gf (g:frame c:bg ch))
+  (define gf (g:frame color-scheme c:bg ch))
   (rstate-loop rstate-loop ch gf rs))
 
 ;; We take loop as an argument so we can write tests that don't go
