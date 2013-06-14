@@ -166,17 +166,11 @@
           (for/list ([row (in-range max-row)])
             (define l (buffer-line b row))
             (define row-o (hash-ref (buffer-row->overlay b) row make-hasheq))
-            ;; line at once: 178ms
-            ;; (send bm-dc draw-text l 0 (* row char-height))
-
             (for/list ([char (in-string l)]
                        [col (in-naturals)])
               (define col-o
                 (hash-ref (buffer-row*col->overlay b) (cons row col) make-hasheq))
               (d:glyph row col
-                       ;; slow (list): 7000ms
-                       ;; fast (hash): 200-500 ms
-                       ;; fake:  600ms
                        (if (overlay-ref (rs-o b-o row-o col-o) 'highlight? #f)
                          c:red
                          c:fg-mi)

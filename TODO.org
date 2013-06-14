@@ -223,8 +223,10 @@ Commands could search their body for overlays of a specific type
    basic editor -> buffers/windows/frames -> multiple modes ->
    terminal -> shell -> org-mode -> canvas buffers (eog, evince) ->
    web buffers
-** TODO internal: change key map to arrows
-** TODO view display adjusting to cursor
+** DONE internal: change key map to arrows
+   CLOSED: [2013-06-14 Fri 12:59]
+** DONE view display adjusting to cursor
+   CLOSED: [2013-06-14 Fri 12:59]
 ** TODO detach cursor from view and put on buffer somehow
    so that if a buffer doesn't have any cursor when you create a new
    view of it, you get the last cursor
@@ -264,3 +266,4 @@ Commands could search their body for overlays of a specific type
    figuring out where an object is to overlay on it?
 
 ** TODO integrate with anthy for JP input
+** TODO woman
