@@ -421,7 +421,6 @@
 ;; Start
 (define (start rs)
   (define ch (make-async-channel))
-  ;; xxx make color-scheme and d depend on gf's "context" (i.e. opengl)
   (define gf (g:frame color-scheme c:bg ch))
   (define d (d:drawer (g:frame-context gf) color-scheme
                       "Bitstream Vera Sans Mono" 10))
