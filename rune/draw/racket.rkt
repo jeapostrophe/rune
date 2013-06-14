@@ -61,7 +61,7 @@
   (* acol char-width))
 (define (canvas-bitmap-height c)
   (match-define (canvas _ (drawer _ char-width char-height) _ _ arow acol _ bm-dc) c)
-  (* arow char-width))
+  (* arow char-height))
 
 (define (canvas-refresh! c nrow ncol t)
   (match-define (canvas _ (drawer _ char-width char-height) _ _ _ _ _ bm-dc)

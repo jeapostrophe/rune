@@ -206,7 +206,11 @@
          (- cursor-bm-y centered-row-pxs)]))
 
     (define dy (centered-d eh cursor-bm-y b-bm-h))
-    (define dx (centered-d ew cursor-bm-x b-bm-w))
+    (define dx (centered-d ew cursor-bm-x
+                           ;; xxx It is unclear what the right choice is
+                           (if #t
+                             b-bm-w
+                             (* (add1 (buffer-max-col b row)) char-width))))
 
     (define cursor-x (- (+ x hmargin (* col char-width)) dx))
     (define cursor-y (- (+ y vmargin (* row char-height)) dy))
