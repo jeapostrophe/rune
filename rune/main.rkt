@@ -9,7 +9,7 @@
          (prefix-in g: rune/gui/racket)
          (prefix-in d: rune/draw/racket))
 
-(struct buffer 
+(struct buffer
         (canvas canvas-needs-update? overlay row->overlay row*col->overlay content)
         #:mutable)
 
@@ -34,6 +34,11 @@
   (z:buffer-rows (buffer-content b)))
 (define (buffer-max-col b r)
   (z:buffer-row-cols (buffer-content b) r))
+(define (buffer-max-cols b)
+  (for/fold ([mc 0])
+      ([r (in-range (buffer-max-row b))])
+    (max mc (buffer-max-col b r))))
+
 (define (buffer-line b r)
   (z:buffer-row (buffer-content b) r))
 (define (buffer-insert-at! b row col c)
@@ -142,12 +147,8 @@
          (define rs-o (rstate-overlay rs))
          (define b-o (buffer-overlay b))
 
-         ;; xxx
          (define max-row (buffer-max-row b))
-         (define max-col
-           (for/fold ([mc 0])
-               ([r (in-range max-row)])
-             (max mc (buffer-max-col b r))))
+         (define max-col (buffer-max-cols b))
 
          (define b-c (buffer-canvas b))
 
@@ -186,8 +187,11 @@
        (define b-c (buffer-canvas b))
        (define b-bm (d:canvas-bitmap b-c))
        (g:bitmap (+ x hmargin) (+ y vmargin)
+                 ;; xxx put the negative check on the other side
                  (max 0 (- w hmargin)) (max 0 (- h vmargin))
-                 b-bm 0 0))
+                 b-bm
+                 ;; xxx figure these out
+                 0 0))
 
      ;; Outline
      (g:outline x y w h
@@ -197,12 +201,11 @@
 
      ;; Cursor
      (let ()
-       ;; xxx not showing for non-focused
        (match-define (cursor row col) c)
        (define cursor-x (+ x hmargin (* col char-width)))
        (define cursor-y (+ y vmargin (* row char-height)))
-       (unless (or (< w (+ cursor-x char-width))
-                   (< h (+ cursor-y char-height)))
+       (unless (or (< (+ x w) (+ cursor-x char-width))
+                   (< (+ y h) (+ cursor-y char-height)))
          (g:outline cursor-x cursor-y
                     char-width char-height
                     (if focused?
