@@ -5,6 +5,7 @@
          racket/match
          racket/class
          rune/lib/tree
+         rune/lib/colors
          rune/lib/timing)
 
 (struct frame (frame% canvas% thread elements-box label-box perf-hash))
@@ -131,8 +132,7 @@
            [y real?]
            [w real?]
            [h real?]
-           ;; xxx
-           [c (is-a?/c color%)]))
+           [c color/c]))
   (struct bitmap
           ([x real?]
            [y real?]
@@ -147,7 +147,7 @@
        boolean?)]
   [rename
    make-frame frame
-   (-> (is-a?/c color%) ;; xxx
+   (-> color/c
        async-channel? ;; xxx contract to correct symbols
        frame?)]
   [frame-width

@@ -4,6 +4,7 @@
          racket/match
          racket/class
          rune/lib/tree
+         rune/lib/colors
          (only-in racket/gui/base make-screen-bitmap))
 
 (struct drawer (font% char-width char-height))
@@ -93,8 +94,8 @@
   (struct glyph
           ([row nat?]
            [col nat?]
-           [fg (is-a?/c color%)]
-           [bg (is-a?/c color%)]
+           [fg color/c]
+           [bg color/c]
            [char char?]))
   [rename
    make-drawer drawer
@@ -109,7 +110,7 @@
   [rename
    make-canvas canvas
    (-> drawer?
-       (is-a?/c color%)
+       color/c
        canvas?)]
   [rename
    canvas-bm canvas-bitmap

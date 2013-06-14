@@ -5,6 +5,7 @@
          racket/match
          racket/async-channel
          rune/lib/timing
+         rune/lib/colors
          (prefix-in z: rune/lib/buffer)
          (prefix-in g: rune/gui/racket)
          (prefix-in d: rune/draw/racket))
@@ -15,7 +16,7 @@
 
 (define (path->buffer p)
   (define b
-    (buffer (d:canvas the-drawer c:background)
+    (buffer (d:canvas the-drawer c:bg)
             #t
             (make-hasheq (list (cons 'name p)))
             (make-hasheq)
@@ -117,16 +118,24 @@
 
 (define the-drawer (d:drawer "Bitstream Vera Sans Mono" 10))
 
-;; xxx
-(define-values
-  (c:background c:text c:highlight c:outline)
-  (let ()
-    (local-require racket/draw racket/class)
-    (define base3 (make-object color% 253 246 227))
-    (define base00 (make-object color% 101 123 131))
-    (define red (make-object color% 220 50 47))
-    (define blue (make-object color% 38 139 210))
-    (values base3 base00 red blue)))
+(define-colors
+  color-scheme
+  ui-lo     #x00 #x2b #x36
+  ui-mi     #x07 #x36 #x42
+  fg-hi     #x58 #x6e #x75
+  fg-mi     #x65 #x7b #x83
+  ui-hi     #x83 #x94 #x96
+  fg-lo     #x93 #xa1 #xa1
+  bg-hi     #xee #xe8 #xd5
+  bg        #xfd #xf6 #xe3
+  yellow    #xb5 #x89 #x00
+  orange    #xcb #x4b #x16
+  red       #xdc #x32 #x2f
+  magenta   #xd3 #x36 #x82
+  violet    #x6c #x71 #xc4
+  blue      #x26 #x8b #xd2
+  cyan      #x2a #xa1 #x98
+  green     #x85 #x99 #x00)
 
 (define (rstate-render! gf rs)
   (define full-w (g:frame-width gf))
@@ -169,9 +178,9 @@
                        ;; fast (hash): 200-500 ms
                        ;; fake:  600ms
                        (if (overlay-ref (rs-o b-o row-o col-o) 'highlight? #f)
-                         c:highlight
-                         c:text)
-                       c:background
+                         c:red
+                         c:fg-mi)
+                       c:bg
                        char))))
 
          (set-buffer-canvas-needs-update?! b #f)))))
@@ -222,8 +231,8 @@
      ;; Outline
      (g:outline x y w h
                 (if focused?
-                  c:outline
-                  c:text))
+                  c:blue
+                  c:ui-hi))
 
      ;; Cursor
      (unless (or (< (+ x w) (+ cursor-x char-width))
@@ -231,8 +240,8 @@
        (g:outline cursor-x cursor-y
                   char-width char-height
                   (if focused?
-                    c:outline
-                    c:text)))))
+                    c:blue
+                    c:ui-hi)))))
 
   (define (ctxt->elements x y w h c)
     (match c
@@ -415,7 +424,7 @@
 ;; Start
 (define (start rs)
   (define ch (make-async-channel))
-  (define gf (g:frame c:background ch))
+  (define gf (g:frame c:bg ch))
   (rstate-loop rstate-loop ch gf rs))
 
 ;; We take loop as an argument so we can write tests that don't go
