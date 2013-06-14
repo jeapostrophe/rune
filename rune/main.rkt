@@ -9,11 +9,14 @@
          (prefix-in g: rune/gui/racket)
          (prefix-in d: rune/draw/racket))
 
-(struct buffer (dirty? overlay row->overlay row*col->overlay content) #:mutable)
+(struct buffer 
+        (canvas canvas-needs-update? overlay row->overlay row*col->overlay content)
+        #:mutable)
 
 (define (path->buffer p)
   (define b
-    (buffer #t
+    (buffer (d:canvas the-drawer c:background)
+            #t
             (make-hasheq (list (cons 'name p)))
             (make-hasheq)
             (make-hash)
@@ -107,8 +110,6 @@
 
 (define-rstate-lookup rstate-buffer rstate-buffers "Unknown buffer ~e")
 
-;; xxx integrate into buffer
-(define buffer->c (make-hasheq))
 (define the-drawer (d:drawer "Bitstream Vera Sans Mono" 10))
 
 ;; xxx
@@ -135,7 +136,7 @@
   (define-values (bt _)
     (time-it
      (for ([(bid b) (rstate-buffers rs)])
-       (when (buffer-dirty? b)
+       (when (buffer-canvas-needs-update? b)
          (eprintf "buffer dirty: ~a\n" bid)
 
          (define rs-o (rstate-overlay rs))
@@ -148,19 +149,14 @@
                ([r (in-range max-row)])
              (max mc (buffer-max-col b r))))
 
-         (define b-c
-           (hash-ref!
-            buffer->c bid
-            (λ ()
-              (eprintf "canvas gone: ~a\n" bid)
-              (d:canvas the-drawer max-row max-col c:background))))
+         (define b-c (buffer-canvas b))
 
          (d:canvas-refresh!
           b-c max-row max-col
           (for/list ([row (in-range max-row)])
             (define l (buffer-line b row))
             (define row-o (hash-ref (buffer-row->overlay b) row make-hasheq))
-            ;; xxx line at once: 178ms
+            ;; line at once: 178ms
             ;; (send bm-dc draw-text l 0 (* row char-height))
 
             (for/list ([char (in-string l)]
@@ -177,7 +173,7 @@
                        c:background
                        char))))
 
-         (set-buffer-dirty?! b #f)))))
+         (set-buffer-canvas-needs-update?! b #f)))))
   (g:frame-perf! gf 'buffers bt)
 
   (define (view->elements x y w h focused? v)
@@ -187,7 +183,7 @@
     (list*
      (let ()
        (define b (rstate-buffer rs bid))
-       (define b-c (hash-ref buffer->c bid))
+       (define b-c (buffer-canvas b))
        (define b-bm (d:canvas-bitmap b-c))
        (g:bitmap (+ x hmargin) (+ y vmargin)
                  (max 0 (- w hmargin)) (max 0 (- h vmargin))
@@ -331,7 +327,7 @@
   (match-define (view (cursor row col) bid) v)
   (define b (rstate-buffer rs bid))
   (begin0 (f b row col)
-          (set-buffer-dirty?! b #t)))
+          (set-buffer-canvas-needs-update?! b #t)))
 
 (define ((insert-char c) rs)
   (do-to-buffer rs

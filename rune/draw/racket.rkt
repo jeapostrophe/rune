@@ -8,7 +8,7 @@
 
 (struct drawer (font% char-width char-height))
 (struct glyph (row col fg bg char))
-(struct canvas (bg-c char-width char-height arow acol bm bm-dc) #:mutable)
+(struct canvas (bg-c d arow acol bm bm-dc) #:mutable)
 
 (define (make-drawer face size)
   (define the-font (make-font #:face face #:family 'modern #:size size))
@@ -19,23 +19,45 @@
     (send text-dc get-text-extent " "))
   (drawer the-font width height))
 
-(define (make-canvas d erow ecol bg-c)
+(define (make-canvas d bg-c)
   (match-define (drawer the-font char-width char-height) d)
-  (define arow (* 2 erow))
-  (define acol (* 2 ecol))
-  (define bm
-    (make-screen-bitmap
-     (inexact->exact (ceiling (* acol char-width)))
-     (inexact->exact (ceiling (* arow char-height)))))
-  (define bm-dc (send bm make-dc))
-  (send bm-dc set-background bg-c)
-  (send bm-dc clear)  
-  (send bm-dc set-font the-font)
-  (canvas bg-c char-width char-height arow acol bm bm-dc))
+  (ensure-size! (canvas bg-c d 0 0 #f #f) 1 1))
+
+(define (ensure-size! c nrow ncol)
+  (match-define (canvas bg-c (drawer the-font char-width char-height)
+                        old-arow old-acol old-bm old-bm-dc)
+                c)
+  (unless (and (<= nrow old-arow)
+               (<= ncol old-acol))
+    (define new-arow (max (* 2 old-arow) nrow))
+    (define new-acol (max (* 2 old-acol) ncol))
+    (define new-bm
+      (make-screen-bitmap
+       (inexact->exact (ceiling (* new-acol char-width)))
+       (inexact->exact (ceiling (* new-arow char-height)))))
+    (define new-bm-dc (send new-bm make-dc))
+    (send new-bm-dc set-background bg-c)
+    (send new-bm-dc clear)
+    (send new-bm-dc set-font the-font)
+
+    (when old-bm
+      (send new-bm-dc draw-bitmap-section old-bm
+            0 0
+            0 0
+            (send old-bm get-width)
+            (send old-bm get-height)))
+
+    (set-canvas-arow! c new-arow)
+    (set-canvas-acol! c new-acol)
+    (set-canvas-bm! c new-bm)
+    (set-canvas-bm-dc! c new-bm-dc))
+  c)
 
 (define (canvas-refresh! c nrow ncol t)
-  ;; xxx check nrow & ncol
-  (match-define (canvas bg-c char-width char-height arow acol bm bm-dc) c)
+  (match-define (canvas _ (drawer _ char-width char-height) _ _ _ bm-dc)
+                (ensure-size! c nrow ncol))
+  ;; xxx remove if i do "smart" redisplay
+  (send bm-dc clear)
   (define gcount
     (tree-iter!
      (match-lambda
@@ -77,8 +99,6 @@
   [rename
    make-canvas canvas
    (-> drawer?
-       nat?
-       nat?
        (is-a?/c color%)
        canvas?)]
   [rename
