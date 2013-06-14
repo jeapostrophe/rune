@@ -8,7 +8,7 @@
          rune/lib/colors
          (only-in racket/gui/base make-screen-bitmap))
 
-(struct drawer (ctxt colors font% char-width char-height))
+(struct drawer (ctxt colors font% font-cache-tex font-cache-hash char-width char-height))
 (struct glyph (row col fg bg char))
 (struct canvas (bg-cr d rrow rcol arow acol bm) #:mutable)
 
@@ -19,7 +19,7 @@
   (send text-dc set-font the-font)
   (define-values (width height xtra-below xtra-above)
     (send text-dc get-text-extent " "))
-  (drawer ctxt colors the-font width height))
+  (drawer ctxt colors the-font #f (make-hasheq) width height))
 
 (define (make-canvas d bg-cr)
   (canvas bg-cr d -1 -1 -1 -1 #f))
@@ -56,7 +56,9 @@
 (define (canvas-refresh! c nrow ncol t)
   (ensure-size! c nrow ncol)
   (match-define (canvas bg-cr d _ _ _ _ bm) c)
-  (match-define (drawer ctxt colors the-font char-width char-height) d)
+  (match-define (drawer ctxt colors the-font fc-tex fc-hash char-width char-height) d)
+
+  (define fc-tex-dirty? #f)
 
   ;; OpenGL: Render to the generated texture
   (define bm-dc (send bm make-dc))
@@ -82,6 +84,12 @@
        (define fg (colors-ref colors fgr))
        (define bg (colors-ref colors bgr))
 
+       (define ci
+         (hash-ref! fc-hash (char->integer char)
+                    (λ ()
+                      (set! fc-tex-dirty? #t)
+                      (hash-count fc-hash))))
+
        (send bm-dc set-pen bg 0 'solid)
        (send bm-dc set-brush bg 'solid)
        (send bm-dc draw-rectangle x y w h)
@@ -89,6 +97,10 @@
        (send bm-dc set-text-foreground fg)
        (send bm-dc draw-text (string char) x y)])
      t))
+
+  (when fc-tex-dirty?
+    (eprintf "refreshing font cache texture: ~a\n"
+             (hash-count fc-hash)))
 
   (eprintf "drew ~a glyphs\n" gcount)
   (void))
