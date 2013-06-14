@@ -135,13 +135,11 @@
   cyan      #x2a #xa1 #x98
   green     #x85 #x99 #x00)
 
-(define the-drawer (d:drawer color-scheme "Bitstream Vera Sans Mono" 10))
-
-(define (rstate-render! gf rs)
+(define (rstate-render! gf d rs)
   (define full-w (g:frame-width gf))
   (define full-h (g:frame-height gf))
-  (define char-width (d:drawer-char-width the-drawer))
-  (define char-height (d:drawer-char-height the-drawer))
+  (define char-width (d:drawer-char-width d))
+  (define char-height (d:drawer-char-height d))
 
   (define margin% 0.5)
   (define hmargin (* char-width margin%))
@@ -162,7 +160,7 @@
          (define b-c 
            (cond [(buffer-canvas b) => (λ (x) x)]
                  [else
-                  (define c (d:canvas the-drawer c:bg))
+                  (define c (d:canvas d c:bg))
                   (set-buffer-canvas! b c)
                   c]))
 
@@ -423,13 +421,15 @@
 ;; Start
 (define (start rs)
   (define ch (make-async-channel))
+  ;; xxx make color-scheme and d depend on gf's "context" (i.e. opengl)
   (define gf (g:frame color-scheme c:bg ch))
-  (rstate-loop rstate-loop ch gf rs))
+  (define d (d:drawer color-scheme "Bitstream Vera Sans Mono" 10))
+  (rstate-loop rstate-loop ch gf d rs))
 
 ;; We take loop as an argument so we can write tests that don't go
 ;; forever. Cute, huh?
-(define (rstate-loop loop ch gf rs)
-  (rstate-render! gf rs)
+(define (rstate-loop loop ch gf d rs)
+  (rstate-render! gf d rs)
 
   (define next-rs
     (let loop ([h empty])
@@ -453,7 +453,7 @@
                         (g:frame-perf! gf 'transform tt)
                         next-rs)))))))
 
-  (loop loop ch gf next-rs))
+  (loop loop ch gf d next-rs))
 
 (module+ main
   (require racket/runtime-path)
