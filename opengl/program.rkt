@@ -15,6 +15,20 @@
          opengl
          opengl/tree)
 
+(define (print-bandwidth label ctype)
+  (define DrawnMult 6)
+  (define vert-size (ctype-sizeof ctype))
+  (eprintf "One ~a vert is ~a bytes\n" label vert-size)
+  (eprintf "One ~a is ~a verts\n" label DrawnMult)
+  (eprintf "One ~a is ~a bytes\n" label (* DrawnMult vert-size))
+  (eprintf "One ~a @ 60 FPS is ~a bytes per second\n" label (* 60 DrawnMult vert-size))
+  (eprintf "Intel HD Graphics 4000 would give ~a ~a at 60 FPS (considering only memory)\n"
+           (real->decimal-string
+            (/ (* 25.6 1024 1024 1024)
+               (* 60 DrawnMult vert-size)))
+           label)
+  (eprintf "\n"))
+
 (define-syntax (define-opengl-struct stx)
   (syntax-parse stx
     [(_ n:id ([f:id ty:expr] ...))
@@ -27,7 +41,9 @@
           (define-syntax GL_n
             (make-immutable-hasheq
              (list (cons 'f fi) ...)))
-          (define-cstruct _n ([f ty] ...)))))]))
+          (define-cstruct _n ([f ty] ...))
+          (module+ test
+            (print-bandwidth 'n _n)))))]))
 
 (define-syntax (glstruct-offset stx)
   (syntax-parse stx

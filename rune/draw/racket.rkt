@@ -111,10 +111,12 @@
   ;; xxx remove floats
   ([row _float]
    [col _float]
+   ;; xxx move to uniform
    [mrow _float]
    [mcol _float]
 
    [f*b _uint16]
+   ;; xxx could be smaller, but big for alignment
    [char _uint16]
 
    [vh _sint8]
