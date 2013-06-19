@@ -183,8 +183,7 @@
                 (glUniform1i n v)
                 (glUniform1f n v)))
 
-            (begin 
-              (eprintf "~a = ~a\n" 'un uv)
+            (begin
               (glUniform* (glGetUniformLocation ProgramId un)
                           uv))
             ...
@@ -235,8 +234,7 @@
                 (glEnableVertexAttribArray ai)
                 ...
                 (begin (glActiveTexture (GL_TEXTUREi tni))
-                       (glBindTexture GL_TEXTURE_2D tv)
-                       (printf "texture ~a = ~a\n" tni tv))
+                       (glBindTexture GL_TEXTURE_2D tv))
                 ...
                 (glUseProgram ProgramId)
                 (let () . inside)
@@ -297,10 +295,7 @@
 
               (glDrawArrays
                DrawType 0
-               (* DrawnMult drawn-count))
-              (eprintf "~a glDrawArrays ~a\n"
-                       'p
-                       (* DrawnMult drawn-count))))
+               (* DrawnMult drawn-count))))
           (open-package this-program))))]))
 
 (define GLSL-Library

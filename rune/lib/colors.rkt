@@ -46,7 +46,6 @@
   (for ([c (in-vector (colors-vec cs))]
         [i (in-naturals)])
     (match-define (vector r g b) c)
-    (eprintf "~a,~a -> ~a,~a,~a\n" i 0 r g b)
     (send bm-dc set-pixel i 0 (make-object color% r g b)))
   (ctxt
    (λ ()
