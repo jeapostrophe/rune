@@ -62,7 +62,7 @@
          #:fragment (include-template "gfragment.glsl"))
 
        (values (allocate-render-texture 0 0)
-               (λ (gs)                  
+               (λ (gs)
                  (with-GlyphProgram
                   ;; xxx see if i can make this based on whether the fc is dirty?
 
@@ -204,46 +204,7 @@
                     1.0)
       (glClear (bitwise-ior GL_DEPTH_BUFFER_BIT GL_COLOR_BUFFER_BIT))
 
-      (when #t
-        (GlyphProgram gs))
-      (when #f
-        (glColor4f 1.0 1.0 0.0 1.0)
-
-        (define (draw-rect b t l r)
-          (glBegin GL_QUADS)
-          (glVertex2f l b)
-          (glVertex2f r b)
-          (glVertex2f r t)
-          (glVertex2f l t)
-          (glEnd))
-
-        (when #t
-          (define w char-width)
-          (define h char-height)
-          (for* ([x (in-range 100)]
-                 [y (in-range 100)])
-            (when
-                (or (and (= 0 (modulo x 2)) (= 1 (modulo y 2)))
-                    (and (= 1 (modulo x 2)) (= 0 (modulo y 2))))
-              (draw-rect (exact->inexact (* y h)) (* (add1 y) h)
-                         (exact->inexact (* x w)) (* (add1 x) w)))))
-
-        (when #f
-          (define row nrow)
-          (define col ncol)
-          (define b (* char-height 1)) (define t (* char-height (add1 row)))
-          (define l (* char-width 1)) (define r (* char-width (add1 col)))
-          (eprintf "~a,~a -> ~a\n" row col (list (cons l b) (cons r b) (cons r t) (cons l t)))
-          (draw-rect b t l r))
-
-        (when #f
-          (for ([g (in-list (take-right gs 80))])
-            (define row (glyphi-row g))
-            (define col (glyphi-col g))
-            (define b (* char-height row)) (define t (* char-height (add1 row)))
-            (define l (* char-width col)) (define r (* char-width (add1 col)))
-            (eprintf "~a,~a -> ~a\n" row col (list (cons l b) (cons r b) (cons r t) (cons l t)))
-            (draw-rect b t l r))))
+      (GlyphProgram gs)
 
       (glPopAttrib))))
 

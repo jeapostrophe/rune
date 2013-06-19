@@ -54,8 +54,6 @@
      (glPushMatrix)
      (glLoadIdentity)
      (glViewport 0 0 w h)
-     ;; xxx
-     (glOrtho 0 w 0 h 0. -10.)
      (let () . e)
      (glPopMatrix)
      (glPopAttrib)
