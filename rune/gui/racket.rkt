@@ -5,10 +5,13 @@
          racket/async-channel
          racket/match
          racket/class
-         rune/lib/tree
          rune/lib/colors
          rune/lib/context
-         rune/lib/timing)
+         rune/lib/timing
+         opengl
+         opengl/tree
+         opengl/program
+         web-server/templates)
 
 (struct frame (frame% canvas% thread context elements-box label-box perf-hash))
 
@@ -57,69 +60,153 @@
 
     (super-new)))
 
-(struct element (x y w h))
-(struct outline element (c))
-(struct bitmap element (bm dx dy))
+(define-opengl-struct bitmapi
+  ([bm _uint32]
+
+   ;; xxx unfloat?
+   [x _float]
+   [y _float]
+   [w _float]
+   [h _float]
+   ;; xxx make a uniform
+   [fw _float]
+   [fh _float]
+   ;; xxx make a uniform
+   [tw _float]
+   [th _float]
+
+   [dx _float]
+   [dy _float]
+
+   [vh _sint8]
+   [vv _sint8]))
+(define (bitmap fw fh x y w h bm tw th dx dy)
+  (make-bitmapi bm x y w h fw fh tw th dx dy 0 0))
+
+(define-opengl-struct outlinei
+  ;; xxx unfloat?
+  ([x _float]
+   [y _float]
+   [w _float]
+   [h _float]
+   ;; xxx make a uniform
+   [fw _float]
+   [fh _float]
+
+   [c _uint8]
+
+   [vh _sint8]
+   [vv _sint8]))
+(define (outline fw fh x y w h c)
+  (make-outlinei x y w h fw fh c 0 0))
 
 (define (make-frame colors bg-cr ch)
   (define new-es (make-eventspace))
-  ;; OpenGL: Configure an OpenGL canvas
   (parameterize ([current-eventspace new-es])
     (define rf (new frame% [label ""]))
-    (define elements-box (box (void)))
-    (define ctxt #f)
-    (define (top-draw! c dc)
-      ;; OpenGL: You need the dc to get the context, so cache whether
-      ;; you've done this yet.
-      (set-colors-context! colors ctxt)
 
-      ;; OpenGL: Render to the screen
-      (define bg-c (colors-ref colors bg-cr))
-      (send dc set-background bg-c)
-      (send dc clear)
-      (define-values (ft ecount)
-        (time-it
-         (let ()
-           (define outlines empty)
-           (define bitmaps (make-hasheq))
+    (define config
+      (new gl-config%))
+    (send config set-double-buffered #t)
 
-           (define ecount
-             (tree-iter!
-              (match-lambda
-               [(? outline? o)
-                (set! outlines (cons o outlines))]
-               [(? bitmap? b)
-                (hash-update! bitmaps (bitmap-bm b) (λ (x) (cons b x)) empty)])
-              (unbox elements-box)))
-
-           ;; OpenGL: Turn on the bitmap shader
-           (for ([(bm bs) (in-hash bitmaps)])
-             ;; OpenGL: Bind the texture for 'bm' and then send this
-             ;; worklist to the shader
-             (for ([b (in-list bs)])
-               (match-define (bitmap x y w h bm dx dy) b)
-               (send dc draw-bitmap-section bm x y dx dy (max 0 w) (max 0 h))))
-
-           ;; OpenGL: Turn on the outine shader and send this worklist
-           (for ([o (in-list outlines)])
-             (match-define (outline x y w h cr) o)
-             (define c (colors-ref colors cr))
-             (send dc set-pen c 2 'solid)
-             (send dc set-brush c 'transparent)
-             (send dc draw-rectangle x y w h))
-
-           (list ecount (add1 (hash-count bitmaps))))))
-      (frame-perf! gf 'frame-draw ft)
-      (eprintf "drew ~a (elements, distinct things)\n" ecount))
+    (define og-top-draw! void)
     (define c
       (new gf-canvas% [parent rf]
-           [style '(no-autoclear transparent)]
-           [paint-callback top-draw!]
+           [gl-config config]
+           [style '(gl no-autoclear transparent)]
+           [paint-callback
+            (λ (c dc)
+              (og-top-draw! c dc))]
            [event-ch ch]))
-    (define t (thread (λ () (yield never-evt))))
-    (define gf (frame rf c t ctxt elements-box (box "") (make-hasheq)))
     (send c focus)
     (send rf show #t)
+
+    (define actual-ctxt (send (send c get-dc) get-gl-context))
+    (define ctxt (λ (f) (send actual-ctxt call-as-current f)))
+    (set-colors-context! colors ctxt)
+
+    (define elements-box (box (void)))
+    (match-define (vector bg-r bg-g bg-b) (colors-ref colors bg-cr))
+
+    (define top-draw!
+      (ctxt
+       (λ ()
+         (define-opengl-program BitmapProgram
+           #:struct bitmapi
+           #:vertex-spec vh vv
+           #:uniform BitmapTex 0
+           #:attribute in_Position (x y)
+           #:attribute in_TexDimension (tw th)
+           #:attribute in_Dimension (w h)
+           #:attribute in_Viewport (fw fh)
+           #:attribute in_Vertex (vh vv)
+           #:attribute in_Offset (dx dy)
+           #:connected TexCoord
+           #:vertex (include-template "bvertex.glsl")
+           #:fragment (include-template "bfragment.glsl"))
+         (define-opengl-program OutlineProgram
+           #:struct outlinei
+           #:vertex-spec vh vv
+           #:uniform ColorTex 1
+           #:texture 1 (colors-tex colors)
+           #:attribute in_Position (x y)
+           #:attribute in_Dimension (w h)
+           #:attribute in_Viewport (fw fh)
+           #:attribute in_Vertex (vh vv)
+           #:attribute in_Color (c)
+           #:connected Color
+           #:vertex (include-template "overtex.glsl")
+           #:fragment (include-template "ofragment.glsl"))
+
+         (λ (c _)
+           (define-values (ft ecount)
+             (time-it
+              (define full-w (send c get-width))
+              (define full-h (send c get-height))
+
+              (glPushAttrib (bitwise-ior GL_COLOR_BUFFER_BIT GL_DEPTH_BUFFER_BIT))
+              (glViewport 0 0 full-w full-h)
+
+              (glClearColor (exact->inexact (/ bg-r 255))
+                            (exact->inexact (/ bg-g 255))
+                            (exact->inexact (/ bg-b 255))
+                            1.0)
+
+              (glClear (bitwise-ior GL_DEPTH_BUFFER_BIT GL_COLOR_BUFFER_BIT))
+
+              (define outlines empty)
+              (define bitmaps (make-hasheq))
+
+              (define ecount
+                (tree-iter!
+                 (λ (i x)
+                   (match x
+                     [(? outlinei? o)
+                      (set! outlines (cons o outlines))]
+                     [(? bitmapi? b)
+                      (hash-update! bitmaps (bitmapi-bm b) (λ (x) (cons b x)) empty)]))
+                 (unbox elements-box)))
+
+              (with-BitmapProgram
+               (for ([(bm bs) (in-hash bitmaps)])
+                 ;; xxx integrate into inner
+                 (glActiveTexture GL_TEXTURE0)
+                 (glBindTexture GL_TEXTURE_2D bm)
+                 (inner-BitmapProgram bs)))
+
+              (OutlineProgram outlines)
+
+              (glPopAttrib)
+
+              (send actual-ctxt swap-buffers)
+
+              (list ecount (add1 (hash-count bitmaps)))))
+           (frame-perf! gf 'frame-draw ft)
+           (eprintf "drew ~a (elements, distinct things)\n" ecount)))))
+    (set! og-top-draw! top-draw!)
+
+    (define t (thread (λ () (yield never-evt))))
+    (define gf (frame rf c t ctxt elements-box (box "") (make-hasheq)))
     gf))
 
 (define (frame-width gf)
@@ -156,30 +243,23 @@
             (unbox (frame-label-box gf))))
   (send (frame-frame% gf) set-label l))
 
+(define (element? x)
+  (or (outlinei? x) (bitmapi? x)))
+
 (provide
  (contract-out
-  (struct outline
-          ([x real?]
-           [y real?]
-           [w real?]
-           [h real?]
-           [c color/c]))
-  (struct bitmap
-          ([x real?]
-           [y real?]
-           [w real?]
-           [h real?]
-           ;; xxx
-           [bm (is-a?/c bitmap%)]
-           [dx real?]
-           [dy real?]))
+  [outline
+   (-> flonum? flonum? flonum? flonum? flonum? flonum? color/c
+       outlinei?)]
+  [bitmap
+   (-> flonum? flonum? flonum? flonum? flonum? flonum? exact-nonnegative-integer? flonum? flonum? flonum? flonum?
+       bitmapi?)]
   [frame?
    (-> any/c
        boolean?)]
   [rename
    make-frame frame
-   (-> colors/c color/c
-       async-channel? ;; xxx contract to correct symbols
+   (-> colors/c color/c async-channel? ;; xxx contract to correct symbols
        frame?)]
   [frame-width
    (-> frame?
@@ -191,12 +271,8 @@
    (-> frame?
        context/c)]
   [frame-perf!
-   (-> frame?
-       symbol?
-       number?
+   (-> frame? symbol? number?
        void)]
   [frame-refresh!
-   (-> frame?
-       string?
-       (tree/c element?)
+   (-> frame? string? (tree/c element?)
        void)]))

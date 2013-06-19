@@ -1,5 +1,5 @@
 #lang racket/base
 (require racket/contract)
 (define context/c
-  false/c)
+  (-> (-> any) any))
 (provide context/c)

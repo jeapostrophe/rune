@@ -1,3 +1,5 @@
+#lang racket/base
+#;
 (on-file-change
  (for ([w (in-words)])
    (cond

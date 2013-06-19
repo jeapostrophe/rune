@@ -136,8 +136,8 @@
   green     #x85 #x99 #x00)
 
 (define (rstate-render! gf d rs)
-  (define full-w (g:frame-width gf))
-  (define full-h (g:frame-height gf))
+  (define full-w (exact->inexact (g:frame-width gf)))
+  (define full-h (exact->inexact (g:frame-height gf)))
   (define char-width (d:drawer-char-width d))
   (define char-height (d:drawer-char-height d))
 
@@ -147,6 +147,7 @@
 
   (define-values (bt _)
     (time-it
+     42
      (for ([(bid b) (rstate-buffers rs)])
        (when (buffer-canvas-needs-update? b)
          (eprintf "buffer dirty: ~a\n" bid)
@@ -157,7 +158,7 @@
          (define max-row (buffer-max-row b))
          (define max-col (buffer-max-cols b))
 
-         (define b-c 
+         (define b-c
            (cond [(buffer-canvas b) => (λ (x) x)]
                  [else
                   (define c (d:canvas d c:bg))
@@ -182,7 +183,7 @@
 
          (set-buffer-canvas-needs-update?! b #f)))))
   (g:frame-perf! gf 'buffers bt)
-
+  
   (define (view->elements x y w h focused? v)
     (match-define (view (cursor row col) bid) v)
 
@@ -198,12 +199,12 @@
     (define eh (- h vmargin))
 
     (define (centered-d eh cursor-bm-y b-bm-h)
-      (define centered-row-pxs (/ eh 2))
+      (define centered-row-pxs (/ eh 2.0))
       (cond
         ;; If the cursor is so early, then we can't move things
         ;; backward, because we'd run off the screen.
         [(< cursor-bm-y centered-row-pxs)
-         0]
+         0.0]
         ;; If the cursor is so late, then we can't move things
         ;; forward
         [(< (- b-bm-h centered-row-pxs) cursor-bm-y)
@@ -223,10 +224,13 @@
 
     ;; Render a buffer
     (list*
-     (g:bitmap (+ x hmargin) (+ y vmargin) ew eh b-bm dx dy)
+     (g:bitmap full-w full-h 
+               (+ x hmargin) (+ y vmargin) ew eh 
+               ;; xxx put in b-bm structure?
+               b-bm (d:canvas-real-width b-c) (d:canvas-real-height b-c) dx dy)
 
      ;; Outline
-     (g:outline x y w h
+     (g:outline full-w full-h x y w h
                 (if focused?
                   c:blue
                   c:ui-hi))
@@ -234,7 +238,7 @@
      ;; Cursor
      (unless (or (< (+ x w) (+ cursor-x char-width))
                  (< (+ y h) (+ cursor-y char-height)))
-       (g:outline cursor-x cursor-y
+       (g:outline full-w full-h cursor-x cursor-y
                   char-width char-height
                   (if focused?
                     c:blue
@@ -286,7 +290,10 @@
     (cons (view->elements mx my mw mh focused? v) es))
 
   (define-values (et elements)
-    (time-it (focus->elements 0 0 full-w full-h #t (rstate-focus rs))))
+    (time-it (focus->elements
+              0.0 0.0
+              full-w full-h
+              #t (rstate-focus rs))))
   (g:frame-perf! gf 'elements et)
   (define b (view-buffer rs (focus-view (rstate-focus rs))))
   (define rs-o (rstate-overlay rs))
@@ -458,10 +465,10 @@
 
 (module+ main
   ;; config: load/save from file
-  (require racket/runtime-path)  
+  (require racket/runtime-path)
   (define-runtime-path exp "../TODO.org")
   (define ex (path->string exp))
-  (start   
+  (start
    (rstate (hasheq)
            (hasheq 0
                    (path->buffer ex))

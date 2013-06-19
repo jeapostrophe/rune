@@ -2,15 +2,27 @@
 (require racket/contract
          racket/draw
          racket/match
+         racket/list
          racket/class
          rune/lib/context
-         rune/lib/tree
          rune/lib/colors
-         (only-in racket/gui/base make-screen-bitmap))
+         (only-in racket/gui/base make-screen-bitmap)
+         opengl/texture-render
+         opengl/texture
+         opengl/program
+         opengl/tree
+         opengl
+         web-server/templates)
+(module+ test
+  (require rackunit))
 
-(struct drawer (ctxt colors font% font-cache-tex font-cache-hash char-width char-height))
-(struct glyph (row col fg bg char))
-(struct canvas (bg-cr d rrow rcol arow acol bm) #:mutable)
+(struct drawer
+        (ctxt colors
+              font% font-cache-tex font-cache-hash [font-cache-side #:mutable]
+              char-width char-height))
+(struct canvas
+        (bg-cr d rrow rcol arow acol bm gp)
+        #:mutable)
 
 (define (make-drawer ctxt colors face size)
   (define the-font (make-font #:face face #:family 'modern #:size size))
@@ -19,10 +31,46 @@
   (send text-dc set-font the-font)
   (define-values (width height xtra-below xtra-above)
     (send text-dc get-text-extent " "))
-  (drawer ctxt colors the-font #f (make-hasheq) width height))
+  (define fc-tex
+    (ctxt
+     (λ ()
+       (allocate-texture))))
+  (drawer ctxt colors the-font fc-tex (make-hasheq) 0 width height))
 
 (define (make-canvas d bg-cr)
-  (canvas bg-cr d -1 -1 -1 -1 #f))
+  (define-values (canvas-tex gp)
+    ((drawer-ctxt d)
+     (λ ()
+       (define-opengl-program GlyphProgram
+         #:struct glyphi
+         #:vertex-spec vh vv
+         #:uniform CharWidth (drawer-char-width d)
+         #:uniform CharHeight (drawer-char-height d)
+         #:uniform ColorTex 1
+         #:uniform FontTex 2
+         #:texture 1 (colors-tex (drawer-colors d))
+         #:texture 2 (drawer-font-cache-tex d)
+         #:attribute in_Position_rc (row col)
+         #:attribute in_Char (char)
+         #:attribute in_Vertex (vh vv)
+         #:attribute in_Color (f*b)
+         #:attribute in_Viewport_rc (mrow mcol)
+         #:connected FColor
+         #:connected BColor
+         #:connected TexCoord
+         #:vertex (include-template "gvertex.glsl")
+         #:fragment (include-template "gfragment.glsl"))
+
+       (values (allocate-render-texture 0 0)
+               (λ (gs)                  
+                 (with-GlyphProgram
+                  ;; xxx see if i can make this based on whether the fc is dirty?
+
+                  ;; xxx integrate to inner
+                  (glUniform1f (glGetUniformLocation GlyphProgramId "CharSide")
+                               (drawer-font-cache-side d))
+                  (inner-GlyphProgram gs)))))))
+  (canvas bg-cr d -1 -1 -1 -1 canvas-tex gp))
 
 (define (ensure-size! c nrow ncol)
   (define old-rrow (canvas-rrow c))
@@ -35,72 +83,169 @@
 
     (define new-rrow (max (* 2 old-rrow) nrow))
     (define new-rcol (max (* 2 old-rcol) ncol))
-    (define new-bm
-      ;; OpenGL: Allocate a new texture with this size.
-      (make-screen-bitmap
-       (inexact->exact (ceiling (* new-rcol char-width)))
-       (inexact->exact (ceiling (* new-rrow char-height)))))
+    ((drawer-ctxt d)
+     (λ ()
+       (resize-render-texture!
+        (canvas-bm c)
+        (inexact->exact (ceiling (* new-rcol char-width)))
+        (inexact->exact (ceiling (* new-rrow char-height))))))
 
     (set-canvas-rrow! c new-rrow)
-    (set-canvas-rcol! c new-rcol)
-    (set-canvas-bm! c new-bm))
+    (set-canvas-rcol! c new-rcol))
 
   (set-canvas-arow! c nrow)
   (set-canvas-acol! c ncol))
 
+(define (canvas-bitmap c)
+  (render-texture-t (canvas-bm c)))
 (define (canvas-bitmap-width c)
   (* (canvas-acol c) (drawer-char-width (canvas-d c))))
 (define (canvas-bitmap-height c)
   (* (canvas-arow c) (drawer-char-height (canvas-d c))))
+(define (canvas-real-width c)
+  (* (canvas-rcol c) (drawer-char-width (canvas-d c))))
+(define (canvas-real-height c)
+  (* (canvas-rrow c) (drawer-char-height (canvas-d c))))
+
+(define-opengl-struct glyphi
+  ;; xxx remove floats
+  ([row _float]
+   [col _float]
+   [mrow _float]
+   [mcol _float]
+
+   [f*b _uint16]
+   [char _uint16]
+
+   [vh _sint8]
+   [vv _sint8]))
+
+(define (nibbles hi lo)
+  (+ (arithmetic-shift hi 4) lo))
+(define (nibble-lo n)
+  (bitwise-and n #x0F))
+(define (nibble-hi n)
+  (bitwise-and (arithmetic-shift n -4) #x0F))
+
+(module+ test
+  (for* ([x (in-range 16)]
+         [y (in-range 16)])
+    (define n (nibbles x y))
+    (check-pred byte? n)
+    (check-equal? (nibble-hi n) x)
+    (check-equal? (nibble-lo n) y)))
+
+(define (make-font-bitmap the-font% char-width char-height fc-hash)
+  (define k (hash-count fc-hash))
+  (define side-raw (sqrt k))
+  (define side (ceiling side-raw))
+  (define bm
+    (make-screen-bitmap (inexact->exact (* side char-width))
+                        (inexact->exact (* side char-height))))
+  (define bm-dc (send bm make-dc))
+
+  (for ([(cn ci) (in-hash fc-hash)])
+    (define cx (modulo ci side))
+    (define cy (quotient ci side))
+    (send bm-dc draw-text
+          (string (integer->char cn))
+          (* cx char-width)
+          (* cy char-height)))
+
+  (values side bm))
+
+(struct glyph (row col fg bg char))
 
 (define (canvas-refresh! c nrow ncol t)
   (ensure-size! c nrow ncol)
-  (match-define (canvas bg-cr d _ _ _ _ bm) c)
-  (match-define (drawer ctxt colors the-font fc-tex fc-hash char-width char-height) d)
+  (match-define (canvas bg-cr d rrow rcol (== nrow) (== ncol) bm GlyphProgram) c)
+  (match-define (drawer ctxt colors the-font fc-tex fc-hash old-fc-side
+                        char-width char-height) d)
 
   (define fc-tex-dirty? #f)
+  (define gs empty)
 
-  ;; OpenGL: Render to the generated texture
-  (define bm-dc (send bm make-dc))
-
-  (define bg-c (colors-ref colors bg-cr))
-  (send bm-dc set-background bg-c)
-  (send bm-dc clear)
-  (send bm-dc set-font the-font)
-
-  ;; OpenGL: Cache a texture atlas of the characters used from the
-  ;; font. As you create the vector of things to draw, see if it
-  ;; changes. If it doesn't, then you go on, otherwise you need to
-  ;; generate it and try again. Maybe recall yourself to make the code
-  ;; simpler. Draw with a shader like the Get Bonus shader.
   (define gcount
     (tree-iter!
-     (match-lambda
-      [(glyph grow gcol fgr bgr char)
-       (define x (* gcol char-width))
-       (define y (* grow char-height))
-       (define w char-width)
-       (define h char-height)
-       (define fg (colors-ref colors fgr))
-       (define bg (colors-ref colors bgr))
-
+     (lambda (i g)
+       (match-define (glyph grow gcol fgr bgr char) g)
        (define ci
          (hash-ref! fc-hash (char->integer char)
                     (λ ()
                       (set! fc-tex-dirty? #t)
                       (hash-count fc-hash))))
-
-       (send bm-dc set-pen bg 0 'solid)
-       (send bm-dc set-brush bg 'solid)
-       (send bm-dc draw-rectangle x y w h)
-
-       (send bm-dc set-text-foreground fg)
-       (send bm-dc draw-text (string char) x y)])
+       (set! gs
+             (cons (make-glyphi (exact->inexact grow)
+                                (exact->inexact gcol)
+                                ;; xxx might need nrow/ncol?
+                                (exact->inexact rrow)
+                                (exact->inexact rcol)
+                                (nibbles fgr bgr) ci 0 0)
+                   gs)))
      t))
 
-  (when fc-tex-dirty?
-    (eprintf "refreshing font cache texture: ~a\n"
-             (hash-count fc-hash)))
+  ((drawer-ctxt d)
+   (λ ()
+     (when fc-tex-dirty?
+       (eprintf "refreshing font cache texture: ~a\n"
+                (hash-count fc-hash))
+       (define-values (new-fc-side fc-bm)
+         (make-font-bitmap the-font char-width char-height fc-hash))
+       (set-drawer-font-cache-side! d new-fc-side)
+       (load-texture/bitmap fc-bm #:texture fc-tex))
+
+     (match-define (vector bg-r bg-g bg-b) (colors-ref colors bg-cr))
+     (with-texture-to-render
+      bm
+      (glPushAttrib (bitwise-ior GL_COLOR_BUFFER_BIT GL_DEPTH_BUFFER_BIT))
+      (glClearColor (exact->inexact (/ bg-r 255))
+                    (exact->inexact (/ bg-g 255))
+                    (exact->inexact (/ bg-b 255))
+                    1.0)
+      (glClear (bitwise-ior GL_DEPTH_BUFFER_BIT GL_COLOR_BUFFER_BIT))
+
+      (when #t
+        (GlyphProgram gs))
+      (when #f
+        (glColor4f 1.0 1.0 0.0 1.0)
+
+        (define (draw-rect b t l r)
+          (glBegin GL_QUADS)
+          (glVertex2f l b)
+          (glVertex2f r b)
+          (glVertex2f r t)
+          (glVertex2f l t)
+          (glEnd))
+
+        (when #t
+          (define w char-width)
+          (define h char-height)
+          (for* ([x (in-range 100)]
+                 [y (in-range 100)])
+            (when
+                (or (and (= 0 (modulo x 2)) (= 1 (modulo y 2)))
+                    (and (= 1 (modulo x 2)) (= 0 (modulo y 2))))
+              (draw-rect (exact->inexact (* y h)) (* (add1 y) h)
+                         (exact->inexact (* x w)) (* (add1 x) w)))))
+
+        (when #f
+          (define row nrow)
+          (define col ncol)
+          (define b (* char-height 1)) (define t (* char-height (add1 row)))
+          (define l (* char-width 1)) (define r (* char-width (add1 col)))
+          (eprintf "~a,~a -> ~a\n" row col (list (cons l b) (cons r b) (cons r t) (cons l t)))
+          (draw-rect b t l r))
+
+        (when #f
+          (for ([g (in-list (take-right gs 80))])
+            (define row (glyphi-row g))
+            (define col (glyphi-col g))
+            (define b (* char-height row)) (define t (* char-height (add1 row)))
+            (define l (* char-width col)) (define r (* char-width (add1 col)))
+            (eprintf "~a,~a -> ~a\n" row col (list (cons l b) (cons r b) (cons r t) (cons l t)))
+            (draw-rect b t l r))))
+
+      (glPopAttrib))))
 
   (eprintf "drew ~a glyphs\n" gcount)
   (void))
@@ -108,12 +253,9 @@
 (define nat? exact-nonnegative-integer?)
 (provide
  (contract-out
-  (struct glyph
-          ([row nat?]
-           [col nat?]
-           [fg color/c]
-           [bg color/c]
-           [char char?]))
+  [glyph
+   (-> nat? nat? color/c color/c char?
+       glyph?)]
   [rename
    make-drawer drawer
    (-> context/c colors/c string? nat?
@@ -126,23 +268,23 @@
        real?)]
   [rename
    make-canvas canvas
-   (-> drawer?
-       color/c
+   (-> drawer? color/c
        canvas?)]
-  [rename
-   canvas-bm canvas-bitmap
+  [canvas-bitmap
    (-> canvas?
-       ;; xxx
-       (is-a?/c bitmap%))]
+       exact-nonnegative-integer?)]
   [canvas-bitmap-width
    (-> canvas?
        real?)]
   [canvas-bitmap-height
    (-> canvas?
        real?)]
-  [canvas-refresh!
+  [canvas-real-width
    (-> canvas?
-       nat?
-       nat?
-       (tree/c glyph?)
+       real?)]
+  [canvas-real-height
+   (-> canvas?
+       real?)]
+  [canvas-refresh!
+   (-> canvas? nat? nat? (tree/c glyph?)
        void)]))
