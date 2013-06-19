@@ -135,6 +135,8 @@
     (check-equal? (nibble-hi n) x)
     (check-equal? (nibble-lo n) y)))
 
+(require racket/runtime-path)
+(define-runtime-path font.png "font.png")
 (define (make-font-bitmap the-font% char-width char-height fc-hash)
   (define k (hash-count fc-hash))
   (define side-raw (sqrt k))
@@ -151,6 +153,8 @@
           (string (integer->char cn))
           (* cx char-width)
           (* cy char-height)))
+  
+  (send bm save-file font.png 'png 100)
 
   (values side bm))
 
@@ -177,7 +181,6 @@
        (set! gs
              (cons (make-glyphi (exact->inexact grow)
                                 (exact->inexact gcol)
-                                ;; xxx might need nrow/ncol?
                                 (exact->inexact rrow)
                                 (exact->inexact rcol)
                                 (nibbles fgr bgr) ci 0 0)

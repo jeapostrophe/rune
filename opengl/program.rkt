@@ -138,7 +138,7 @@
           (list (first afs) (last afs)))])
       (syntax/loc stx
         (begin
-          ;; xxx pid hack
+          ;; xxx it is a hack to expose ProgramId, instead inner-p should support #:uniform
           (define-package this-program (p with-p inner-p ProgramId)
             (define un (symbol->string (gensym 'un)))
             ...
@@ -239,7 +239,7 @@
                 (glUseProgram ProgramId)
                 (let () . inside)
                 (glUseProgram 0)
-                ;; xxx reverse?
+                ;; xxx should i reverse the order of unbinding of textures?
                 (begin (glActiveTexture (GL_TEXTUREi tni))
                        (glBindTexture GL_TEXTURE_2D 0))
                 ...))
