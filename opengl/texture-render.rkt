@@ -48,15 +48,10 @@
 
 (define-syntax-rule (with-texture-to-render rt . e)
   (match rt
-    [(render-texture t rb fbo w h)
+    [(render-texture _ _ fbo w h)
      (glBindFramebuffer GL_FRAMEBUFFER fbo)
-     (glPushAttrib GL_CURRENT_BIT)
-     (glPushMatrix)
-     (glLoadIdentity)
      (glViewport 0 0 w h)
      (let () . e)
-     (glPopMatrix)
-     (glPopAttrib)
      (glBindFramebuffer GL_FRAMEBUFFER 0)]))
 
 (provide

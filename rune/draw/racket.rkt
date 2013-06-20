@@ -203,12 +203,12 @@
      (match-define (vector bg-r bg-g bg-b) (colors-ref colors bg-cr))
      (with-texture-to-render
       bm
-      (glPushAttrib (bitwise-ior GL_COLOR_BUFFER_BIT GL_DEPTH_BUFFER_BIT))
+      (glPushAttrib GL_COLOR_BUFFER_BIT)
       (glClearColor (exact->inexact (/ bg-r 255))
                     (exact->inexact (/ bg-g 255))
                     (exact->inexact (/ bg-b 255))
                     1.0)
-      (glClear (bitwise-ior GL_DEPTH_BUFFER_BIT GL_COLOR_BUFFER_BIT))
+      (glClear GL_COLOR_BUFFER_BIT)
 
       (send-to-GlyphProgram fc-tex-dirty? rrow rcol gs)
 
