@@ -22,7 +22,7 @@
             (make-hasheq)
             (make-hash)
             (z:string->buffer (file->string p))))
-  ;; xxx hack
+  ;; xxx hack to populate the overlays
   (define brco (buffer-row*col->overlay b))
   (for ([row (in-range (buffer-max-row b))])
     (for ([col (in-range (buffer-max-col b row))])
