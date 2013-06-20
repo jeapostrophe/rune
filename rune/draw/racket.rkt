@@ -54,7 +54,6 @@
          #:attribute in_Char (char)
          #:attribute in_Vertex (vh vv)
          #:attribute in_Color (f*b)
-         #:attribute in_Viewport_rc (mrow mcol)
          #:connected FColor
          #:connected BColor
          #:connected TexCoord
@@ -62,13 +61,23 @@
          #:fragment (include-template "gfragment.glsl"))
 
        (values (allocate-render-texture 0 0)
-               (λ (dirty? gs)
-                 (with-GlyphProgram
-                  ;; xxx integrate to inner
-                  (when dirty?
-                    (glUniform1f (glGetUniformLocation GlyphProgramId "CharSide")
-                                 (drawer-font-cache-side d)))
-                  (inner-GlyphProgram gs)))))))
+               (let ([last-mrow #f]
+                     [last-mcol #f])
+                 (λ (dirty? mrow mcol gs)
+                   (with-GlyphProgram
+                    ;; xxx integrate these into inner
+                    (when dirty?
+                      (glUniform1f (glGetUniformLocation GlyphProgramId "CharSide")
+                                   (drawer-font-cache-side d)))
+                    (unless (and (equal? last-mrow mrow)
+                                 (equal? last-mcol mcol))
+                      (set! last-mrow mrow)
+                      (set! last-mcol mcol)
+                      (glUniform2f
+                       (glGetUniformLocation GlyphProgramId "in_Viewport_rc")
+                       (exact->inexact mrow)
+                       (exact->inexact mcol)))
+                    (inner-GlyphProgram gs))))))))
   (canvas bg-cr d -1 -1 -1 -1 canvas-tex gp))
 
 (define (ensure-size! c nrow ncol)
@@ -110,9 +119,6 @@
   ;; xxx remove floats
   ([row _float]
    [col _float]
-   ;; xxx move to uniform
-   [mrow _float]
-   [mcol _float]
 
    [f*b _uint16]
    ;; xxx could be smaller, but big for alignment
@@ -164,7 +170,7 @@
 
 (define (canvas-refresh! c nrow ncol t)
   (ensure-size! c nrow ncol)
-  (match-define (canvas bg-cr d rrow rcol (== nrow) (== ncol) bm 
+  (match-define (canvas bg-cr d rrow rcol (== nrow) (== ncol) bm
                         send-to-GlyphProgram) c)
   (match-define (drawer ctxt colors the-font fc-tex fc-hash old-fc-side
                         char-width char-height) d)
@@ -184,8 +190,6 @@
        (set! gs
              (cons (make-glyphi (exact->inexact grow)
                                 (exact->inexact gcol)
-                                (exact->inexact rrow)
-                                (exact->inexact rcol)
                                 (nibbles fgr bgr) ci 0 0)
                    gs)))
      t))
@@ -210,7 +214,7 @@
                     1.0)
       (glClear (bitwise-ior GL_DEPTH_BUFFER_BIT GL_COLOR_BUFFER_BIT))
 
-      (send-to-GlyphProgram fc-tex-dirty? gs)
+      (send-to-GlyphProgram fc-tex-dirty? rrow rcol gs)
 
       (glPopAttrib))))
 
