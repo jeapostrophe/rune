@@ -62,8 +62,6 @@
 
 (define-opengl-struct bitmapi
   ([bm _uint32]
-
-   ;; xxx unfloat?
    [x _float]
    [y _float]
    [w _float]
@@ -84,21 +82,17 @@
   (make-bitmapi bm x y w h fw fh tw th dx dy 0 0))
 
 (define-opengl-struct outlinei
-  ;; xxx unfloat?
   ([x _float]
    [y _float]
    [w _float]
    [h _float]
-   ;; xxx make a uniform
-   [fw _float]
-   [fh _float]
 
    [c _uint8]
 
    [vh _sint8]
    [vv _sint8]))
-(define (outline fw fh x y w h c)
-  (make-outlinei x y w h fw fh c 0 0))
+(define (outline x y w h c)
+  (make-outlinei x y w h c 0 0))
 
 (define (make-frame colors bg-cr ch)
   (define new-es (make-eventspace))
@@ -151,7 +145,6 @@
            #:texture 1 (colors-tex colors)
            #:attribute in_Position (x y)
            #:attribute in_Dimension (w h)
-           #:attribute in_Viewport (fw fh)
            #:attribute in_Vertex (vh vv)
            #:attribute in_Color (c)
            #:connected Color
@@ -194,7 +187,13 @@
                  (glBindTexture GL_TEXTURE_2D bm)
                  (inner-BitmapProgram bs)))
 
-              (OutlineProgram outlines)
+              (with-OutlineProgram
+               ;; xxx integrate
+               (glUniform2f
+                       (glGetUniformLocation OutlineProgramId "in_Viewport")
+                       (exact->inexact full-w) 
+                       (exact->inexact full-h))
+               (inner-OutlineProgram outlines))
 
               (glPopAttrib)
 
@@ -249,7 +248,7 @@
 (provide
  (contract-out
   [outline
-   (-> flonum? flonum? flonum? flonum? flonum? flonum? color/c
+   (-> flonum? flonum? flonum? flonum? color/c
        outlinei?)]
   [bitmap
    (-> flonum? flonum? flonum? flonum? flonum? flonum? exact-nonnegative-integer? flonum? flonum? flonum? flonum?

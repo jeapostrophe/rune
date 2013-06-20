@@ -230,7 +230,7 @@
                b-bm (d:canvas-real-width b-c) (d:canvas-real-height b-c) dx dy)
 
      ;; Outline
-     (g:outline full-w full-h x y w h
+     (g:outline x y w h
                 (if focused?
                   c:blue
                   c:ui-hi))
@@ -238,7 +238,7 @@
      ;; Cursor
      (unless (or (< (+ x w) (+ cursor-x char-width))
                  (< (+ y h) (+ cursor-y char-height)))
-       (g:outline full-w full-h cursor-x cursor-y
+       (g:outline cursor-x cursor-y
                   char-width char-height
                   (if focused?
                     c:blue
