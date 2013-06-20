@@ -1,8 +1,9 @@
 #version 130
+uniform vec2 in_Viewport;
+
 in vec2 @|in_Position|;
 in vec2 @|in_Dimension|;
 in vec2 @|in_TexDimension|;
-in vec2 @|in_Viewport|;
 in ivec2 @|in_Vertex|;
 in vec2 @|in_Offset|;
 
@@ -14,8 +15,8 @@ void main ( void )
 {
   mat4 ZeMatrix =
     glTranslate( @|in_Position|.x, @|in_Position|.y, 0.0)
-    * glOrtho(0.0, @|in_Viewport|.x,
-              0.0, @|in_Viewport|.y,
+    * glOrtho(0.0, in_Viewport.x,
+              0.0, in_Viewport.y,
               1.0, -1.0);
   float px = (@|in_Vertex|.x * @|in_Dimension|.x);
   float py = (@|in_Vertex|.y * @|in_Dimension|.y);

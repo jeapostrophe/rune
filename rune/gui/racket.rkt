@@ -67,9 +67,6 @@
    [w _float]
    [h _float]
    ;; xxx make a uniform
-   [fw _float]
-   [fh _float]
-   ;; xxx make a uniform
    [tw _float]
    [th _float]
 
@@ -78,8 +75,8 @@
 
    [vh _sint8]
    [vv _sint8]))
-(define (bitmap fw fh x y w h bm tw th dx dy)
-  (make-bitmapi bm x y w h fw fh tw th dx dy 0 0))
+(define (bitmap x y w h bm tw th dx dy)
+  (make-bitmapi bm x y w h tw th dx dy 0 0))
 
 (define-opengl-struct outlinei
   ([x _float]
@@ -132,7 +129,6 @@
            #:attribute in_Position (x y)
            #:attribute in_TexDimension (tw th)
            #:attribute in_Dimension (w h)
-           #:attribute in_Viewport (fw fh)
            #:attribute in_Vertex (vh vv)
            #:attribute in_Offset (dx dy)
            #:connected TexCoord
@@ -181,6 +177,11 @@
                  (unbox elements-box)))
 
               (with-BitmapProgram
+               ;; xxx integrate
+               (glUniform2f
+                (glGetUniformLocation BitmapProgramId "in_Viewport")
+                (exact->inexact full-w)
+                (exact->inexact full-h))
                (for ([(bm bs) (in-hash bitmaps)])
                  ;; xxx integrate into inner
                  (glActiveTexture GL_TEXTURE0)
@@ -190,9 +191,9 @@
               (with-OutlineProgram
                ;; xxx integrate
                (glUniform2f
-                       (glGetUniformLocation OutlineProgramId "in_Viewport")
-                       (exact->inexact full-w) 
-                       (exact->inexact full-h))
+                (glGetUniformLocation OutlineProgramId "in_Viewport")
+                (exact->inexact full-w)
+                (exact->inexact full-h))
                (inner-OutlineProgram outlines))
 
               (glPopAttrib)
@@ -251,7 +252,7 @@
    (-> flonum? flonum? flonum? flonum? color/c
        outlinei?)]
   [bitmap
-   (-> flonum? flonum? flonum? flonum? flonum? flonum? exact-nonnegative-integer? flonum? flonum? flonum? flonum?
+   (-> flonum? flonum? flonum? flonum? exact-nonnegative-integer? flonum? flonum? flonum? flonum?
        bitmapi?)]
   [frame?
    (-> any/c

@@ -224,8 +224,7 @@
 
     ;; Render a buffer
     (list*
-     (g:bitmap full-w full-h 
-               (+ x hmargin) (+ y vmargin) ew eh 
+     (g:bitmap (+ x hmargin) (+ y vmargin) ew eh 
                ;; xxx put in b-bm structure?
                b-bm (d:canvas-real-width b-c) (d:canvas-real-height b-c) dx dy)
 
