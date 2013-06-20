@@ -1,4 +1,4 @@
-#lang at-exp racket/base
+#lang racket/base
 (require (for-syntax racket/base
                      racket/syntax
                      racket/dict
@@ -12,6 +12,7 @@
          ffi/cvector
          ffi/vector
          ffi/unsafe/cvector
+         web-server/templates
          opengl
          opengl/tree)
 
@@ -110,7 +111,7 @@
     (printf "\n")
     (eprintf "~a:\n~a\n"
              shader-name
-             (subbytes infoLog 0 infoLen))    
+             (subbytes infoLog 0 infoLen))
     (exit 1)))
 
 (define-syntax-rule
@@ -124,10 +125,16 @@
                          (vector ShaderSource)
                          (s32vector))
          (glCompileShader VertexShaderId)
-         (print-shader-log 
+         (print-shader-log
           glGetShaderInfoLog '(ProgramId VertexShaderId) VertexShaderId
           ShaderSource)
          (glAttachShader ProgramId VertexShaderId)))
+
+(define (set-opengl-texture!* which tv)
+  (glActiveTexture which)
+  (glBindTexture GL_TEXTURE_2D tv))
+(define-syntax-rule (set-opengl-texture! tni tv)
+  (set-opengl-texture!* (GL_TEXTUREi tni) tv))
 
 (define-syntax (define-opengl-program stx)
   (syntax-parse stx
@@ -151,7 +158,8 @@
        [((as ae) ...)
         (for/list ([afss (in-list (syntax->list #'((af ...) ...)))])
           (define afs (syntax->list afss))
-          (list (first afs) (last afs)))])
+          (list (first afs) (last afs)))]
+       [(rtni ...) (reverse (syntax->list #'(tni ...)))])
       (syntax/loc stx
         (begin
           ;; xxx it is a hack to expose ProgramId, instead inner-p should support #:uniform
@@ -249,15 +257,12 @@
                 (glBindVertexArray VaoId)
                 (glEnableVertexAttribArray ai)
                 ...
-                (begin (glActiveTexture (GL_TEXTUREi tni))
-                       (glBindTexture GL_TEXTURE_2D tv))
+                (set-opengl-texture! tni tv)
                 ...
                 (glUseProgram ProgramId)
                 (let () . inside)
                 (glUseProgram 0)
-                ;; xxx should i reverse the order of unbinding of textures?
-                (begin (glActiveTexture (GL_TEXTUREi tni))
-                       (glBindTexture GL_TEXTURE_2D 0))
+                (set-opengl-texture! rtni 0)
                 ...))
 
             (define DrawType GL_TRIANGLES)
@@ -315,32 +320,7 @@
           (open-package this-program))))]))
 
 (define GLSL-Library
-  @list{
-        mat4 glRotate( float angle, float x, float y, float z ) {
-         float c = cos(angle);
-         float s = sin(angle);
-         return mat4( x*x*(1-c) + c, x*y*(1-c) - z*s, x*z*(1-c) + y*s, 0.0,
-                      y*x*(1-c) + z*s, y*y*(1-c) + c, y*z*(1-c) - x*s, 0.0,
-                      x*z*(1-c) - y*s, y*z*(1-c) + x*s, z*z*(1-c)+c, 0.0,
-                      0.0, 0.0, 0.0, 1.0);
-        }
-
-        mat4 glOrtho( float left, float right, float bottom, float top, float nearVal, float farVal ) {
-         float t_x = - (right + left) / (right - left);
-         float t_y = - (top + bottom) / (top - bottom);
-         float t_z = - (farVal + nearVal) / (farVal - nearVal);
-         return mat4( 2.0 / right - left, 0.0, 0.0, t_x,
-                      0.0, 2.0 / top - bottom, 0.0, t_y,
-                      0.0, 0.0, -2 / farVal - nearVal, t_z,
-                      0.0, 0.0, 0.0, 1.0 );
-        }
-
-        mat4 glTranslate( float x, float y, float z ) {
-         return mat4(1.0, 0.0, 0.0, x,
-                     0.0, 1.0, 0.0, y,
-                     0.0, 0.0, 1.0, z,
-                     0.0, 0.0, 0.0, 1.0);
-        }})
+  (include-template "program.glsl"))
 
 (provide
  define-opengl-program
