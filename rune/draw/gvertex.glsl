@@ -32,7 +32,6 @@ void main ( void )
   float py = (@|in_Vertex|.y * @|CharHeight|);
   gl_Position = vec4( px, py, 0.0, 1.0) * ZeMatrix;
 
-  // xxx characters are too close together
   float CharTexWidth = CharSide * @|CharWidth|;
   float CharTexHeight = CharSide * @|CharHeight|;
   float ci = float(@|in_Char|);

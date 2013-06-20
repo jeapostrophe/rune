@@ -415,7 +415,7 @@
     (insert-char c)]
    [(rune-key '<return>)
     (insert-char #\newline)]
-   [(rune-key '<space>)
+   [(or (rune-key '<space>) (rune-key 'S-<space>))
     (insert-char #\space)]
    [(rune-key '<backspace>)
     (delete-previous)]

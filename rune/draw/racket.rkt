@@ -147,6 +147,7 @@
     (make-screen-bitmap (inexact->exact (* side char-width))
                         (inexact->exact (* side char-height))))
   (define bm-dc (send bm make-dc))
+  (send bm-dc set-font the-font%)
 
   (for ([(cn ci) (in-hash fc-hash)])
     (define cx (modulo ci side))
