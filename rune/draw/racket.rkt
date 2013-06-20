@@ -141,7 +141,7 @@
 (define (make-font-bitmap the-font% char-width char-height fc-hash)
   (define k (hash-count fc-hash))
   (define side-raw (sqrt k))
-  (define side (ceiling side-raw))
+  (define side (* 1.0 (ceiling side-raw)))
   (define bm
     (make-screen-bitmap (inexact->exact (* side char-width))
                         (inexact->exact (* side char-height))))

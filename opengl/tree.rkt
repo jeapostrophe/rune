@@ -2,7 +2,7 @@
 (require racket/match
          racket/contract)
 
-;; xxx
+;; xxx check tree contract?
 (define (tree/c ?)
   any/c)
 
