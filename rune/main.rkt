@@ -220,7 +220,7 @@
                              (* (add1 (buffer-max-col b row)) char-width))))
 
     (define cursor-x (- (+ x hmargin (* col char-width)) dx))
-    (define cursor-y (- (+ y vmargin (* row char-height)) dy))
+    (define cursor-y (- (+ y (* (add1 row) char-height)) dy))
 
     ;; Render a buffer
     (list*

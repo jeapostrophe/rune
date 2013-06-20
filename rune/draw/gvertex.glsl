@@ -23,7 +23,6 @@ void main ( void )
   vec2 in_Viewport = vec2( @|in_Viewport_rc|.y * @|CharWidth|,
                            @|in_Viewport_rc|.x * @|CharHeight| );
 
-  // xxx y goes down when visual goes up :(
   mat4 ZeMatrix =
     glTranslate( in_Position.x, in_Position.y, 0.0)
     * glOrtho(0.0, in_Viewport.x,
@@ -33,7 +32,7 @@ void main ( void )
   float py = (@|in_Vertex|.y * @|CharHeight|);
   gl_Position = vec4( px, py, 0.0, 1.0) * ZeMatrix;
 
-  // xxx characters are upside down and too close together
+  // xxx characters are too close together
   float CharTexWidth = CharSide * @|CharWidth|;
   float CharTexHeight = CharSide * @|CharHeight|;
   float ci = float(@|in_Char|);

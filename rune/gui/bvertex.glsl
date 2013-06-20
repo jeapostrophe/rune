@@ -12,7 +12,6 @@ out vec2 @|TexCoord|;
 
 void main ( void )
 {
-  // xxx y goes down when visual goes up :(
   mat4 ZeMatrix =
     glTranslate( @|in_Position|.x, @|in_Position|.y, 0.0)
     * glOrtho(0.0, @|in_Viewport|.x,
@@ -22,8 +21,14 @@ void main ( void )
   float py = (@|in_Vertex|.y * @|in_Dimension|.y);
   gl_Position = vec4( px, py, 0.0, 1.0) * ZeMatrix;
 
+  int ry;
+  if (@|in_Vertex|.y == 0) {
+    ry = 1;
+  } else{
+    ry = 0;
+  }
   @|TexCoord| = vec2( (@|in_Offset|.x + (@|in_Vertex|.x * @|in_Dimension|.x)) /
                       @|in_TexDimension|.x,
-                      (@|in_Offset|.y + (@|in_Vertex|.y * @|in_Dimension|.y)) /
+                      (@|in_Offset|.y + (ry * @|in_Dimension|.y)) /
                       @|in_TexDimension|.y);
 }
