@@ -62,13 +62,12 @@
          #:fragment (include-template "gfragment.glsl"))
 
        (values (allocate-render-texture 0 0)
-               (λ (gs)
+               (λ (dirty? gs)
                  (with-GlyphProgram
-                  ;; xxx see if i can make this based on whether the fc is dirty?
-
                   ;; xxx integrate to inner
-                  (glUniform1f (glGetUniformLocation GlyphProgramId "CharSide")
-                               (drawer-font-cache-side d))
+                  (when dirty?
+                    (glUniform1f (glGetUniformLocation GlyphProgramId "CharSide")
+                                 (drawer-font-cache-side d)))
                   (inner-GlyphProgram gs)))))))
   (canvas bg-cr d -1 -1 -1 -1 canvas-tex gp))
 
@@ -156,7 +155,7 @@
           (string (integer->char cn))
           (* cx char-width)
           (* cy char-height)))
-  
+
   (send bm save-file font.png 'png 100)
 
   (values side bm))
@@ -165,7 +164,8 @@
 
 (define (canvas-refresh! c nrow ncol t)
   (ensure-size! c nrow ncol)
-  (match-define (canvas bg-cr d rrow rcol (== nrow) (== ncol) bm GlyphProgram) c)
+  (match-define (canvas bg-cr d rrow rcol (== nrow) (== ncol) bm 
+                        send-to-GlyphProgram) c)
   (match-define (drawer ctxt colors the-font fc-tex fc-hash old-fc-side
                         char-width char-height) d)
 
@@ -210,7 +210,7 @@
                     1.0)
       (glClear (bitwise-ior GL_DEPTH_BUFFER_BIT GL_COLOR_BUFFER_BIT))
 
-      (GlyphProgram gs)
+      (send-to-GlyphProgram fc-tex-dirty? gs)
 
       (glPopAttrib))))
 
