@@ -203,16 +203,13 @@
      (match-define (vector bg-r bg-g bg-b) (colors-ref colors bg-cr))
      (with-texture-to-render
       bm
-      (glPushAttrib GL_COLOR_BUFFER_BIT)
       (glClearColor (exact->inexact (/ bg-r 255))
                     (exact->inexact (/ bg-g 255))
                     (exact->inexact (/ bg-b 255))
                     1.0)
       (glClear GL_COLOR_BUFFER_BIT)
-
-      (send-to-GlyphProgram fc-tex-dirty? rrow rcol gs)
-
-      (glPopAttrib))))
+      
+      (send-to-GlyphProgram fc-tex-dirty? rrow rcol gs))))
 
   (eprintf "drew ~a glyphs\n" gcount)
   (void))
