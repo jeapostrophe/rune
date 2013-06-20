@@ -119,9 +119,8 @@
   ([row _uint16]
    [col _uint16]
 
-   ;; xxx could be smaller, but big for alignment
-   [f*b _uint16]
    [char _uint16]
+   [f*b _uint8]
 
    [vh _sint8]
    [vv _sint8]))
@@ -187,7 +186,7 @@
                       (set! fc-tex-dirty? #t)
                       (hash-count fc-hash))))
        (set! gs
-             (cons (make-glyphi grow gcol (nibbles fgr bgr) ci 0 0)
+             (cons (make-glyphi grow gcol ci (nibbles fgr bgr) 0 0)
                    gs)))
      t))
 
