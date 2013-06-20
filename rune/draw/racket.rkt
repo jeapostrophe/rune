@@ -116,12 +116,11 @@
   (* (canvas-rrow c) (drawer-char-height (canvas-d c))))
 
 (define-opengl-struct glyphi
-  ;; xxx remove floats
-  ([row _float]
-   [col _float]
+  ([row _uint16]
+   [col _uint16]
 
-   [f*b _uint16]
    ;; xxx could be smaller, but big for alignment
+   [f*b _uint16]
    [char _uint16]
 
    [vh _sint8]
@@ -188,9 +187,7 @@
                       (set! fc-tex-dirty? #t)
                       (hash-count fc-hash))))
        (set! gs
-             (cons (make-glyphi (exact->inexact grow)
-                                (exact->inexact gcol)
-                                (nibbles fgr bgr) ci 0 0)
+             (cons (make-glyphi grow gcol (nibbles fgr bgr) ci 0 0)
                    gs)))
      t))
 

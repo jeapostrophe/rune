@@ -5,7 +5,7 @@ uniform float @|CharHeight|;
 uniform sampler2D @|ColorTex|;
 uniform vec2 in_Viewport_rc;
 
-in vec2 @|in_Position_rc|;
+in uvec2 @|in_Position_rc|;
 in ivec2 @|in_Vertex|;
 in uint @|in_Char|;
 in uint @|in_Color|;
