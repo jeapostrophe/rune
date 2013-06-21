@@ -8,6 +8,7 @@
          rune/lib/colors
          rune/lib/context
          rune/lib/timing
+         ffi/vector
          opengl
          opengl/tree
          opengl/program
@@ -126,6 +127,7 @@
            #:struct bitmapi
            #:vertex-spec vh vv
            #:uniform BitmapTex 0
+           #:dynuniform in_Viewport
            #:attribute in_Position (x y)
            #:attribute in_TexDimension (tw th)
            #:attribute in_Dimension (w h)
@@ -138,11 +140,13 @@
            #:struct outlinei
            #:vertex-spec vh vv
            #:uniform ColorTex 1
+           #:dynuniform in_Viewport
            #:texture 1 (colors-tex colors)
            #:attribute in_Position (x y)
            #:attribute in_Dimension (w h)
            #:attribute in_Vertex (vh vv)
            #:attribute in_Color (c)
+           #:connected Vertex
            #:connected Color
            #:vertex (include-template "overtex.glsl")
            #:fragment (include-template "ofragment.glsl"))
@@ -177,32 +181,28 @@
                  (unbox elements-box)))
 
               (with-BitmapProgram
-               ;; xxx integrate
-               (glUniform2f
-                (glGetUniformLocation BitmapProgramId "in_Viewport")
-                (exact->inexact full-w)
-                (exact->inexact full-h))
+               [#:uniform in_Viewport
+                          (f32vector (exact->inexact full-w)
+                                     (exact->inexact full-h))]
                (for ([(bm bs) (in-hash bitmaps)])
-                 ;; xxx integrate into inner
-                 (glActiveTexture GL_TEXTURE0)
-                 (glBindTexture GL_TEXTURE_2D bm)
-                 (inner-BitmapProgram bs)))
+                 (inner-BitmapProgram
+                  [#:texture 0 bm]
+                  bs)))
 
-              (with-OutlineProgram
-               ;; xxx integrate
-               (glUniform2f
-                (glGetUniformLocation OutlineProgramId "in_Viewport")
-                (exact->inexact full-w)
-                (exact->inexact full-h))
-               (inner-OutlineProgram outlines))
+              (OutlineProgram
+               [#:uniform in_Viewport
+                          (f32vector (exact->inexact full-w)
+                                     (exact->inexact full-h))]
+               outlines)
+              ;; xxx not all the outlines are displayed
+              (eprintf "~a outlines\n" (length outlines))
 
               (glPopAttrib)
 
               (send actual-ctxt swap-buffers)
 
               (list ecount (add1 (hash-count bitmaps)))))
-           (frame-perf! gf 'frame-draw ft)
-           (eprintf "drew ~a (elements, distinct things)\n" ecount)))))
+           (frame-perf! gf 'frame-draw ft)))))
     (set! og-top-draw! top-draw!)
 
     (define t (thread (λ () (yield never-evt))))

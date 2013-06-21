@@ -12,6 +12,7 @@
          opengl/program
          opengl/tree
          opengl
+         ffi/vector
          web-server/templates)
 (module+ test
   (require rackunit))
@@ -48,6 +49,8 @@
          #:uniform CharHeight (drawer-char-height d)
          #:uniform ColorTex 1
          #:uniform FontTex 2
+         #:dynuniform CharSide
+         #:dynuniform in_Viewport_rc
          #:texture 1 (colors-tex (drawer-colors d))
          #:texture 2 (drawer-font-cache-tex d)
          #:attribute in_Position_rc (row col)
@@ -61,23 +64,13 @@
          #:fragment (include-template "gfragment.glsl"))
 
        (values (allocate-render-texture 0 0)
-               (let ([last-mrow #f]
-                     [last-mcol #f])
-                 (λ (dirty? mrow mcol gs)
-                   (with-GlyphProgram
-                    ;; xxx integrate these into inner
-                    (when dirty?
-                      (glUniform1f (glGetUniformLocation GlyphProgramId "CharSide")
-                                   (drawer-font-cache-side d)))
-                    (unless (and (equal? last-mrow mrow)
-                                 (equal? last-mcol mcol))
-                      (set! last-mrow mrow)
-                      (set! last-mcol mcol)
-                      (glUniform2f
-                       (glGetUniformLocation GlyphProgramId "in_Viewport_rc")
-                       (exact->inexact mrow)
-                       (exact->inexact mcol)))
-                    (inner-GlyphProgram gs))))))))
+               (λ (dirty? mrow mcol gs)
+                 (GlyphProgram
+                  [#:when dirty? [#:uniform CharSide (drawer-font-cache-side d)]]
+                  [#:uniform in_Viewport_rc
+                             (f32vector (exact->inexact mrow)
+                                        (exact->inexact mcol))]
+                  gs))))))
   (canvas bg-cr d -1 -1 -1 -1 canvas-tex gp))
 
 (define (ensure-size! c nrow ncol)
@@ -206,12 +199,10 @@
       (glClearColor (exact->inexact (/ bg-r 255))
                     (exact->inexact (/ bg-g 255))
                     (exact->inexact (/ bg-b 255))
-                    1.0)
+                    1.0)      
       (glClear GL_COLOR_BUFFER_BIT)
-      
-      (send-to-GlyphProgram fc-tex-dirty? rrow rcol gs))))
 
-  (eprintf "drew ~a glyphs\n" gcount)
+      (send-to-GlyphProgram fc-tex-dirty? rrow rcol gs))))  
   (void))
 
 (define nat? exact-nonnegative-integer?)

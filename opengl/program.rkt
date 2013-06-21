@@ -3,6 +3,8 @@
                      racket/syntax
                      racket/dict
                      racket/list
+                     syntax/stx
+                     syntax/id-table
                      syntax/parse)
          racket/string
          racket/package
@@ -136,12 +138,62 @@
 (define-syntax-rule (set-opengl-texture! tni tv)
   (set-opengl-texture!* (GL_TEXTUREi tni) tv))
 
+(define (glUniform* ProgramId name v)
+  (define loc (glGetUniformLocation ProgramId name))
+  (cond
+    [(and (number? v) (exact? v))
+     (glUniform1i loc v)]
+    [(and (number? v) (inexact? v))
+     (glUniform1f loc v)]
+    [(f32vector? v)
+     (glUniform2f loc (f32vector-ref v 0) (f32vector-ref v 1))]
+    [else
+     (error 'glUniform* "can't deal with ~e type" v)]))
+
+(begin-for-syntax
+  (define-syntax-class dynopt
+    #:attributes (static dynamic)
+    (pattern (#:uniform un:id uv:expr)
+             #:attr static
+             ;; xxx add static cache
+             #'()
+             #:attr dynamic
+             (λ (ProgramId duns i)
+               (define dun
+                 (or (for/or ([dun (in-list (syntax->list duns))])
+                       ;; xxx
+                       (and (eq? (syntax-e dun) (syntax-e #'un))
+                            dun))
+                     (error 'dynopt-uniform "Can't find ~v in ~v\n" #'un duns)))
+               (quasisyntax/loc #'un
+                 (begin (glUniform* #,ProgramId  #,dun uv)
+                        #,i))))
+    (pattern (#:texture tni:nat tv:expr)
+             #:attr static
+             #'()
+             #:attr dynamic
+             (λ (ProgramId duns i)
+               (quasisyntax/loc #'tni
+                 (begin (set-opengl-texture! tni tv)
+                        #,i
+                        (set-opengl-texture! tni 0)))))
+    (pattern (#:when cond:expr o:dynopt)
+             #:attr static
+             (attribute o.static)
+             #:attr dynamic
+             (λ (ProgramId duns i)
+               (quasisyntax/loc #'cond
+                 (begin (when cond
+                          #,((attribute o.dynamic) ProgramId duns #'(void)))
+                        #,i))))))
+
 (define-syntax (define-opengl-program stx)
   (syntax-parse stx
     [(_ p:id
         (~seq #:struct cs:id)
         (~seq #:vertex-spec vh vv)
         (~seq #:uniform un:id uv:expr) ...
+        (~seq #:dynuniform dun:id) ...
         (~seq #:texture tni:nat tv:expr) ...
         (~seq #:attribute an:id (af:id ...)) ...
         (~seq #:connected cn:id) ...
@@ -151,7 +203,6 @@
       ([_cs (format-id #'cs "_~a" #'cs)]
        [with-p (format-id #'p "with-~a" #'p)]
        [inner-p (format-id #'p "inner-~a" #'p)]
-       [ProgramId (format-id #'p "~aId" #'p)]
        [set-vh! (format-id #'vh "set-~a-~a!" #'cs #'vh)]
        [set-vv! (format-id #'vv "set-~a-~a!" #'cs #'vv)]
        [(ai ...) (build-list (length (syntax->list #'(an ...))) (λ (x) x))]
@@ -162,14 +213,7 @@
        [(rtni ...) (reverse (syntax->list #'(tni ...)))])
       (syntax/loc stx
         (begin
-          ;; xxx it is a hack to expose ProgramId, instead inner-p should support #:uniform
-          (define-package this-program (p with-p inner-p ProgramId)
-            (define un (symbol->string (gensym 'un)))
-            ...
-            (define an (symbol->string (gensym 'an)))
-            ...
-            (define cn (symbol->string (gensym 'cn)))
-            ...
+          (define-package this-program (p with-p inner-p)
             (define ProgramData-count
               0)
             (define ProgramData #f)
@@ -187,6 +231,16 @@
               (point-install! +1 -0 5))
 
             (define ProgramId (glCreateProgram))
+
+            (define un (symbol->string (gensym 'un)))
+            ...
+            (define dun (symbol->string (gensym 'dun)))
+            ...
+            (define an (symbol->string (gensym 'an)))
+            ...
+            (define cn (symbol->string (gensym 'cn)))
+            ...
+
             (glBindAttribLocation ProgramId ai an)
             ...
 
@@ -202,14 +256,7 @@
             (print-shader-log glGetProgramInfoLog 'Program ProgramId)
 
             (glUseProgram ProgramId)
-            (define (glUniform* n v)
-              (if (exact? v)
-                (glUniform1i n v)
-                (glUniform1f n v)))
-
-            (begin
-              (glUniform* (glGetUniformLocation ProgramId un)
-                          uv))
+            (glUniform* ProgramId un uv)
             ...
             (glUseProgram 0)
 
@@ -249,25 +296,49 @@
 
             (glBindVertexArray 0)
 
-            (define-syntax-rule (p es)
-              (with-p (inner-p es)))
+            (define-syntax (p stx)
+              (syntax-parse stx
+                [(_ o:dynopt (... ...) es:expr)
+                 (syntax/loc stx
+                   (with-p o (... ...) (inner-p es)))]))
 
-            (define-syntax-rule (with-p . inside)
-              (begin
-                (glBindVertexArray VaoId)
-                (glEnableVertexAttribArray ai)
-                ...
-                (set-opengl-texture! tni tv)
-                ...
-                (glUseProgram ProgramId)
-                (let () . inside)
-                (glUseProgram 0)
-                (set-opengl-texture! rtni 0)
-                ...))
+            (define-syntax (with-p stx)
+              (syntax-parse stx
+                [(_ o:dynopt (... ...) ie:expr (... ...))
+                 (syntax/loc stx
+                   (begin
+                     (glBindVertexArray VaoId)
+                     (glEnableVertexAttribArray ai)
+                     ...
+                     (set-opengl-texture! tni tv)
+                     ...
+                     (glUseProgram ProgramId)
+                     (with-dynopts o (... ...)
+                                   (let () ie (... ...)))
+                     (glUseProgram 0)
+                     (set-opengl-texture! rtni 0)
+                     ...))]))
+
+            (define-syntax (inner-p stx)
+              (syntax-parse stx
+                [(_ o:dynopt (... ...) es:expr)
+                 (syntax/loc stx
+                   (with-dynopts o (... ...) (inner-p* es)))]))
+
+            (define-syntax (with-dynopts stx)
+              (syntax-parse stx
+                [(_ ie:expr)
+                 #'ie]
+                [(_ o1:dynopt o:dynopt (... ...) ie:expr)
+                 ((attribute o1.dynamic)
+                  #'ProgramId
+                  #'(dun ...)
+                  (syntax/loc stx
+                    (with-dynopts o (... ...) ie)))]))
 
             (define DrawType GL_TRIANGLES)
             (define DrawnMult 6)
-            (define (inner-p es)
+            (define (inner-p* es)
               (define drawn-count (tree-count es))
               (define ProgramData-count:new (max *initial-count* drawn-count))
 

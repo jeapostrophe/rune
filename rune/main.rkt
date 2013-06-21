@@ -150,8 +150,6 @@
      42
      (for ([(bid b) (rstate-buffers rs)])
        (when (buffer-canvas-needs-update? b)
-         (eprintf "buffer dirty: ~a\n" bid)
-
          (define rs-o (rstate-overlay rs))
          (define b-o (buffer-overlay b))
 

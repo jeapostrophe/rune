@@ -1,9 +1,9 @@
 #version 130
-uniform float CharSide;
+uniform float @|CharSide|;
 uniform float @|CharWidth|;
 uniform float @|CharHeight|;
 uniform sampler2D @|ColorTex|;
-uniform vec2 in_Viewport_rc;
+uniform vec2 @|in_Viewport_rc|;
 
 in uvec2 @|in_Position_rc|;
 in ivec2 @|in_Vertex|;
@@ -20,8 +20,8 @@ void main ( void )
 {
   vec2 in_Position = vec2( @|in_Position_rc|.y * @|CharWidth|,
                            @|in_Position_rc|.x * @|CharHeight| );
-  vec2 in_Viewport = vec2( in_Viewport_rc.y * @|CharWidth|,
-                           in_Viewport_rc.x * @|CharHeight| );
+  vec2 in_Viewport = vec2( @|in_Viewport_rc|.y * @|CharWidth|,
+                           @|in_Viewport_rc|.x * @|CharHeight| );
 
   mat4 ZeMatrix =
     glTranslate( in_Position.x, in_Position.y, 0.0)
@@ -32,11 +32,11 @@ void main ( void )
   float py = (@|in_Vertex|.y * @|CharHeight|);
   gl_Position = vec4( px, py, 0.0, 1.0) * ZeMatrix;
 
-  float CharTexWidth = CharSide * @|CharWidth|;
-  float CharTexHeight = CharSide * @|CharHeight|;
+  float CharTexWidth = @|CharSide| * @|CharWidth|;
+  float CharTexHeight = @|CharSide| * @|CharHeight|;
   float ci = float(@|in_Char|);
-  float cy = floor(ci / CharSide);
-  float cx = ci - cy * CharSide;
+  float cy = floor(ci / @|CharSide|);
+  float cx = ci - cy * @|CharSide|;
   @|TexCoord| = vec2( ((cx * @|CharWidth|) + px) / CharTexWidth,
                       ((cy * @|CharHeight|) + py) / CharTexHeight );
 
