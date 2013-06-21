@@ -202,6 +202,7 @@
                     1.0)      
       (glClear GL_COLOR_BUFFER_BIT)
 
+      ;; xxx glyphs are too "thick"
       (send-to-GlyphProgram fc-tex-dirty? rrow rcol gs))))  
   (void))
 

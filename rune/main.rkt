@@ -222,6 +222,7 @@
 
     ;; Render a buffer
     (list*
+     ;; xxx vmargin doesn't seem to be enforced
      (g:bitmap (+ x hmargin) (+ y vmargin) ew eh 
                ;; xxx put in b-bm structure?
                b-bm (d:canvas-real-width b-c) (d:canvas-real-height b-c) dx dy)
