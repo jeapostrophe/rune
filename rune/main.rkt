@@ -223,6 +223,7 @@
                              (* (add1 (buffer-max-col b row)) char-width))))
 
     (define cursor-x (- (+ x hmargin (* col char-width)) dx))
+    ;; xxx opengl is off. seems i need to increase row by 1 and not add vmargin
     (define cursor-y (- (+ y vmargin (* row char-height)) dy))
 
     ;; Render a buffer
