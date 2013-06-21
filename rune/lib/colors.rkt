@@ -39,6 +39,9 @@
 
 (define (colors-ref cs i)
   (vector-ref (colors-vec cs) i))
+(define (colors-ref% cs i)
+  (match-define (vector r g b) (colors-ref cs i))
+  (make-object color% r g b))
 
 (define (set-colors-context! cs ctxt)
   (define bm (make-bitmap 16 1))
@@ -59,6 +62,9 @@
   [colors-ref
    (-> colors/c color/c
        real-color/c)]
+  [colors-ref%
+   (-> colors/c color/c
+       (is-a?/c color%))]
   [set-colors-context!
    (-> colors/c context/c
        void)]

@@ -7,8 +7,13 @@
          rune/lib/timing
          rune/lib/colors
          (prefix-in z: rune/lib/buffer)
-         (prefix-in g: rune/gui/racket)
-         (prefix-in d: rune/draw/racket))
+         #;
+         (combine-in
+          (prefix-in g: rune/gui/raw)
+          (prefix-in d: rune/draw/raw))
+         (combine-in
+          (prefix-in g: rune/gui/opengl)
+          (prefix-in d: rune/draw/opengl)))
 
 (struct buffer
         (canvas canvas-needs-update? overlay row->overlay row*col->overlay content)
@@ -181,7 +186,7 @@
 
          (set-buffer-canvas-needs-update?! b #f)))))
   (g:frame-perf! gf 'buffers bt)
-  
+
   (define (view->elements x y w h focused? v)
     (match-define (view (cursor row col) bid) v)
 
@@ -218,12 +223,12 @@
                              (* (add1 (buffer-max-col b row)) char-width))))
 
     (define cursor-x (- (+ x hmargin (* col char-width)) dx))
-    (define cursor-y (- (+ y (* (add1 row) char-height)) dy))
+    (define cursor-y (- (+ y vmargin (* row char-height)) dy))
 
     ;; Render a buffer
     (list*
      ;; xxx vmargin doesn't seem to be enforced
-     (g:bitmap (+ x hmargin) (+ y vmargin) ew eh 
+     (g:bitmap (+ x hmargin) (+ y vmargin) ew eh
                ;; xxx put in b-bm structure?
                b-bm (d:canvas-real-width b-c) (d:canvas-real-height b-c) dx dy)
 
