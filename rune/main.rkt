@@ -177,6 +177,8 @@
                        [col (in-naturals)])
               (define col-o
                 (hash-ref (buffer-row*col->overlay b) (cons row col) make-hasheq))
+              ;; xxx sometimes these look gross and clipped off. I
+              ;; think it is because the textures aren't powers of 2
               (d:glyph row col
                        (if (overlay-ref (rs-o b-o row-o col-o) 'highlight? #f)
                          c:red
@@ -223,12 +225,10 @@
                              (* (add1 (buffer-max-col b row)) char-width))))
 
     (define cursor-x (- (+ x hmargin (* col char-width)) dx))
-    ;; xxx opengl is off. seems i need to increase row by 1 and not add vmargin
     (define cursor-y (- (+ y vmargin (* row char-height)) dy))
 
     ;; Render a buffer
     (list*
-     ;; xxx vmargin doesn't seem to be enforced
      (g:bitmap (+ x hmargin) (+ y vmargin) ew eh
                ;; xxx put in b-bm structure?
                b-bm (d:canvas-real-width b-c) (d:canvas-real-height b-c) dx dy)

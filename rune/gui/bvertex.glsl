@@ -14,7 +14,9 @@ out vec2 @|TexCoord|;
 void main ( void )
 {
   mat4 ZeMatrix =
-    glTranslate( @|in_Position|.x, @|in_Position|.y, 0.0)
+    glTranslate( @|in_Position|.x,
+                 @|in_Viewport|.y - (@|in_Position|.y + @|in_Dimension|.y),
+                 0.0)
     * glOrtho(0.0, @|in_Viewport|.x,
               0.0, @|in_Viewport|.y,
               1.0, -1.0);
