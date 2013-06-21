@@ -180,7 +180,7 @@
   [rename
    make-frame frame
    (-> colors/c color/c
-       async-channel? ;; xxx contract to correct symbols
+       async-channel?
        frame?)]
   [frame-width
    (-> frame?

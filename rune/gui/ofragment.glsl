@@ -4,7 +4,7 @@ in vec4 @|Color|;
 
 out vec4 out_Color;
 
-float BORDER = 7.0;
+float BORDER = 1.0;
 
 void main ( void )
 {

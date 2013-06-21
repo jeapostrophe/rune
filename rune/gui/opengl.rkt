@@ -189,13 +189,12 @@
                   [#:texture 0 bm]
                   bs)))
 
+              ;; xxx not all the outlines are displayed
               (OutlineProgram
                [#:uniform in_Viewport
                           (f32vector (exact->inexact full-w)
                                      (exact->inexact full-h))]
-               outlines)
-              ;; xxx not all the outlines are displayed
-              (eprintf "~a outlines\n" (length outlines))
+               outlines)              
 
               (glPopAttrib)
 
