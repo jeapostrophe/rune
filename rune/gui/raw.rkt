@@ -169,7 +169,6 @@
            [y real?]
            [w real?]
            [h real?]
-           ;; xxx
            [bm (is-a?/c bitmap%)]
            [tw real?]
            [th real?]

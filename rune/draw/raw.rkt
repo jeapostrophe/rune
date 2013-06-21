@@ -136,7 +136,6 @@
   [rename
    canvas-bm canvas-bitmap
    (-> canvas?
-       ;; xxx
        (is-a?/c bitmap%))]
   [canvas-bitmap-width
    (-> canvas?

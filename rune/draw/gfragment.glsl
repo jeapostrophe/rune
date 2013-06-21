@@ -12,7 +12,7 @@ void main ( void )
   vec4 TexColor = texture2D(@|FontTex|, @|TexCoord|);
 
   // using r just because the texture is just monochrome.
-  // xxx maybe I should use GL_RED?
+  // Optimization Idea: maybe I should use GL_RED on the texture?
   float x = TexColor.r;
   // Lagrange polynomial of: (0.0, @|BColor|) (1.0, @|FColor|);
   float x0 = 0.0;

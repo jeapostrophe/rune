@@ -152,16 +152,13 @@
 
 (begin-for-syntax
   (define-syntax-class dynopt
-    #:attributes (static dynamic)
+    #:attributes (dynamic)
     (pattern (#:uniform un:id uv:expr)
-             #:attr static
-             ;; xxx add static cache
-             #'()
              #:attr dynamic
              (λ (ProgramId duns i)
                (define dun
                  (or (for/or ([dun (in-list (syntax->list duns))])
-                       ;; xxx
+                       ;; xxx this should be free-identifier=? or something
                        (and (eq? (syntax-e dun) (syntax-e #'un))
                             dun))
                      (error 'dynopt-uniform "Can't find ~v in ~v\n" #'un duns)))
@@ -169,8 +166,6 @@
                  (begin (glUniform* #,ProgramId  #,dun uv)
                         #,i))))
     (pattern (#:texture tni:nat tv:expr)
-             #:attr static
-             #'()
              #:attr dynamic
              (λ (ProgramId duns i)
                (quasisyntax/loc #'tni
@@ -178,8 +173,6 @@
                         #,i
                         (set-opengl-texture! tni 0)))))
     (pattern (#:when cond:expr o:dynopt)
-             #:attr static
-             (attribute o.static)
              #:attr dynamic
              (λ (ProgramId duns i)
                (quasisyntax/loc #'cond
