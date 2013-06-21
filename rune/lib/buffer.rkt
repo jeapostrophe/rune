@@ -113,7 +113,7 @@
   (match-define (row-focus pre rowi rowic post) b)
   (define (list-ref* label l i)
     (unless (< i (length l))
-      (error 'buffer-row "~e" (list r pre rowi post label l i)))
+      (error 'buffer-row "list-ref* ~e" (list r rowi label i (length l) pre post l)))
     (list-ref l i))
   (cond
     [(< r rowi)

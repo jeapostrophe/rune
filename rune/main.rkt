@@ -29,20 +29,21 @@
             (z:string->buffer (file->string p))))
   ;; xxx hack to populate the overlays
   (define brco (buffer-row*col->overlay b))
-  (for ([row (in-range (buffer-max-row b))])
-    (for ([col (in-range (buffer-max-col b row))])
+  (for ([row (in-range (add1 (buffer-max-row b)))])
+    (for ([col (in-range (add1 (buffer-max-col b row)))])
       (when (zero? (random 2))
         (define rco (hash-ref! brco (cons row col) make-hasheq))
         (hash-set! rco 'highlight? #t))))
   b)
 
 (define (buffer-max-row b)
-  (z:buffer-rows (buffer-content b)))
+  (sub1 (z:buffer-rows (buffer-content b))))
 (define (buffer-max-col b r)
+  ;; xxx not entirely correct, but it's useful to be one more
   (z:buffer-row-cols (buffer-content b) r))
 (define (buffer-max-cols b)
   (for/fold ([mc 0])
-      ([r (in-range (buffer-max-row b))])
+      ([r (in-range (add1 (buffer-max-row b)))])
     (max mc (buffer-max-col b r))))
 
 (define (buffer-line b r)
