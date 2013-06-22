@@ -2,7 +2,9 @@
 (require racket/match
          racket/contract)
 
-;; xxx check tree contract?
+;; Contract Idea: This contract could be enforced, but it would be
+;; expensive and increase the complexity of all calls to tree
+;; functions, so we don't.
 (define (tree/c ?)
   any/c)
 

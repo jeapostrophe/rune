@@ -39,7 +39,10 @@
 (define (buffer-max-row b)
   (sub1 (z:buffer-rows (buffer-content b))))
 (define (buffer-max-col b r)
-  ;; xxx not entirely correct, but it's useful to be one more
+  ;; xxx not entirely correct, but it's useful to be one more so that
+  ;; you can type on lines with no characters currently and write
+  ;; something at the end of a line. I think I should add another
+  ;; function to distinguish the uses
   (z:buffer-row-cols (buffer-content b) r))
 (define (buffer-max-cols b)
   (for/fold ([mc 0])

@@ -67,7 +67,13 @@
    [y _float]
    [w _float]
    [h _float]
-   ;; xxx make a uniform
+   ;; Optimization Idea: It seems like this could be a
+   ;; uniform. However, it would be awkward to communicate it from the
+   ;; main program to here unless we created an intermediate structure
+   ;; that would hold this, but then have it removed before being sent
+   ;; to OpenGL. If I did that, then I think I would actually do MORE
+   ;; allocation per call, because I'd only save these two floats on
+   ;; one side. Overall, I don't think it would be worth it.
    [tw _float]
    [th _float]
 
@@ -257,7 +263,10 @@
        boolean?)]
   [rename
    make-frame frame
-   (-> colors/c color/c async-channel? ;; xxx contract to correct symbols
+   ;; Contract Idea: It's conceivable to contract this channel to just
+   ;; contain symbols and characters, but I don't think there's a lot
+   ;; of value to that.
+   (-> colors/c color/c async-channel?
        frame?)]
   [frame-width
    (-> frame?
