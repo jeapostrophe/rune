@@ -259,38 +259,34 @@
       [(ctxt:layer p s l r)
        (define-values (mx my mw mh es) (ctxt->elements x y w h p))
        (match s
-         ;; xxx merge these
-         ['horizontal
+         [(or 'vertical 'horizontal)
           (define i (length l))
-          (define ew (/ mw (+ i 1 (length r))))
-          (define (xof j)
-            (+ mx (* j ew)))
+          (define ew
+            (if (eq? s 'horizontal)
+              (/ mw (+ i 1 (length r)))
+              mw))
+          (define xof
+            (if (eq? s 'horizontal)
+              (λ (j) (+ mx (* j ew)))
+              (λ (j) mx)))
+          (define eh
+            (if (eq? s 'vertical)
+              (/ mh (+ i 1 (length r)))
+              mh))
+          (define yof
+            (if (eq? s 'vertical)
+              (λ (j) (+ my (* j eh)))
+              (λ (j) my)))
 
-          (values (xof i) my ew mh
+          (values (xof i) (yof i) ew eh
                   (list* (for/list ([sf (in-list l)]
                                     [rj (in-naturals 1)])
                            (define j (- i rj))
-                           (focus->elements (xof j) my ew mh #f sf))
+                           (focus->elements (xof j) (yof j) ew eh #f sf))
                          (for/list ([sf (in-list r)]
                                     [aj (in-naturals 1)])
                            (define j (+ i aj))
-                           (focus->elements (xof j) my ew mh #f sf))
-                         es))]
-         ['vertical
-          (define i (length l))
-          (define eh (/ mh (+ i 1 (length r))))
-          (define (yof j)
-            (+ my (* j eh)))
-
-          (values mx (yof i) mw eh
-                  (list* (for/list ([sf (in-list l)]
-                                    [rj (in-naturals 1)])
-                           (define j (- i rj))
-                           (focus->elements mx (yof j) mw eh #f sf))
-                         (for/list ([sf (in-list r)]
-                                    [aj (in-naturals 1)])
-                           (define j (+ i aj))
-                           (focus->elements mx (yof j) mw eh #f sf))
+                           (focus->elements (xof j) (yof j) ew eh #f sf))
                          es))])]))
   (define (focus->elements x y w h focused? f)
     (match-define (focus c v) f)
