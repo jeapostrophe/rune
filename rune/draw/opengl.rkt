@@ -72,6 +72,13 @@
                   gs))))))
   (canvas bg-cr d -1 -1 -1 -1 canvas-tex gp))
 
+(define (pow2 x)
+  (expt 2
+        (inexact->exact
+         (ceiling
+          (/ (log x)
+             (log 2))))))
+
 (define (ensure-size! c nrow ncol)
   (define d (canvas-d c))
   (define char-width (drawer-char-width d))
@@ -82,8 +89,8 @@
                (<= ncol old-rcol))
     (define new-rrow (max (* 2 old-rrow) nrow))
     (define new-rcol (max (* 2 old-rcol) ncol))
-    (define rw (inexact->exact (ceiling (* new-rcol char-width))))
-    (define rh (inexact->exact (ceiling (* new-rrow char-height))))
+    (define rw (inexact->exact (pow2 (* new-rcol char-width))))
+    (define rh (inexact->exact (pow2 (* new-rrow char-height))))
     ((drawer-ctxt d)
      (λ ()
        (resize-render-texture! (canvas-bm c) rw rh)))

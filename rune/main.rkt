@@ -168,8 +168,6 @@
                      [col (in-naturals)])
             (define col-o
               (hash-ref (buffer-row*col->overlay b) (cons row col) make-hasheq))
-            ;; xxx sometimes these look gross and clipped off. I
-            ;; think it is because the textures aren't powers of 2
             (d:glyph row col
                      (if (overlay-ref (rs-o b-o row-o col-o) 'highlight? #f)
                        c:red
