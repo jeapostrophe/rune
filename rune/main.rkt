@@ -1,5 +1,6 @@
 #lang racket/base
 (require racket/file
+         racket/path
          racket/list
          racket/function
          racket/match
@@ -23,7 +24,7 @@
   (define b
     (buffer #f
             #t
-            (make-hasheq (list (cons 'name p)))
+            (make-hasheq (list (cons 'name (path->string (file-name-from-path p)))))
             (make-hasheq)
             (make-hash)
             (z:string->buffer (file->string p))))
@@ -468,39 +469,33 @@
 (module+ main
   ;; config: load/save from file
   (require racket/runtime-path)
-  (define-runtime-path exp "../TODO.org")
-  (define ex (path->string exp))
+  (define-runtime-path here ".")
+  (define files
+    (find-files (λ (p)
+                  (member (filename-extension p)
+                          '(#"rkt" #"org" #"glsl")))
+                here))
+  (define buffers
+    (for/hasheq ([f (in-list files)]
+                 [i (in-naturals)])
+                (values i (path->buffer f))))
+  (define (buffers->focuses dir bs)
+    (if (empty? bs)
+      empty
+      (list
+       (focus (ctxt:layer
+               (ctxt:top)
+               (if dir
+                 'horizontal
+                 'vertical)
+               (list)
+               (buffers->focuses (not dir) (rest bs)))
+              (view (cursor 0 0) (first bs))))))
   (start
    (rstate (hasheq)
-           (hasheq 0
-                   (path->buffer ex))
-           (focus (ctxt:layer
-                   (ctxt:top)
-                   'horizontal
-                   (list)
-                   (list
-                    (focus (ctxt:layer
-                            (ctxt:top)
-                            'vertical
-                            (list
-                             (focus (ctxt:top)
-                                    (view (cursor 2 0) 0)))
-                            empty)
-                           (view (cursor 3 0) 0))
-                    (focus (ctxt:layer
-                            (ctxt:top)
-                            'horizontal
-                            (list)
-                            (list
-                             (focus (ctxt:layer
-                                     (ctxt:top)
-                                     'vertical
-                                     (list
-                                      (focus (ctxt:top)
-                                             (view (cursor 2 0) 0)))
-                                     empty)
-                                    (view (cursor 3 0) 0))
-                             (focus (ctxt:top)
-                                    (view (cursor 1 0) 0))))
-                           (view (cursor 0 0) 0))))
-                  (view (cursor 0 0) 0)))))
+           buffers
+           (first
+            (buffers->focuses
+             #t
+             ;; xxx stuff is broken in last window
+             (take (hash-keys buffers) 5))))))

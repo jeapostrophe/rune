@@ -84,7 +84,8 @@ Commands could search their body for overlays of a specific type
    CLOSED: [2013-06-07 Fri 16:17]
 ** TODO generalize three implementations of zipper
    two in zip-buffer and one in ctxt:layer
-** TODO rendering
+** DONE rendering
+   CLOSED: [2013-06-22 Sat 13:38]
    redisplay quickly? (blank out modified rows and update)
    OR display quickly (shader magic?)
 
@@ -252,13 +253,15 @@ Commands could search their body for overlays of a specific type
    "spliced" into the terminal buffer, so that you get a record the
    entire interaction that can be redisplayed in the future (like
    always "tee"ing)
-** TODO opengl rendering
+** DONE opengl rendering
+   CLOSED: [2013-06-22 Sat 13:38]
    how to get all the font characters? (exp/font.rkt)
    but maybe just scan the current file set and dynamically create
    the atlas?
 ** TODO compositing
    https://github.com/chjj/compton/blob/master/src/opengl.c
-** TODO automatically increase font-size so that 80chars fit width-wise and no more
+** DONE automatically increase font-size so that 80chars fit width-wise and no more
+   CLOSED: [2013-06-22 Sat 13:38]
 ** TODO embed chromium
    CEF3 seems to do it
 
