@@ -9,8 +9,8 @@
          (prefix-in z: rune/lib/buffer)
          #;
          (combine-in
-          (prefix-in g: rune/gui/raw)
-          (prefix-in d: rune/draw/raw))
+         (prefix-in g: rune/gui/raw)
+         (prefix-in d: rune/draw/raw))
          (combine-in
           (prefix-in g: rune/gui/opengl)
           (prefix-in d: rune/draw/opengl)))
@@ -144,6 +144,45 @@
   cyan      #x2a #xa1 #x98
   green     #x85 #x99 #x00)
 
+(define (buffer-canvas/update rs gf d b)
+  (define-values (bt _)
+    (time-it
+     (when (buffer-canvas-needs-update? b)
+       (define rs-o (rstate-overlay rs))
+       (define b-o (buffer-overlay b))
+
+       (define max-row (buffer-max-row b))
+       (define max-col (buffer-max-cols b))
+
+       (define b-c
+         (cond [(buffer-canvas b) => (λ (x) x)]
+               [else
+                (define c (d:canvas d c:bg))
+                (set-buffer-canvas! b c)
+                c]))
+
+       (d:canvas-refresh!
+        b-c max-row max-col
+        (for/list ([row (in-range max-row)])
+          (define l (buffer-line b row))
+          (define row-o (hash-ref (buffer-row->overlay b) row make-hasheq))
+          (for/list ([char (in-string l)]
+                     [col (in-naturals)])
+            (define col-o
+              (hash-ref (buffer-row*col->overlay b) (cons row col) make-hasheq))
+            ;; xxx sometimes these look gross and clipped off. I
+            ;; think it is because the textures aren't powers of 2
+            (d:glyph row col
+                     (if (overlay-ref (rs-o b-o row-o col-o) 'highlight? #f)
+                       c:red
+                       c:fg-mi)
+                     c:bg
+                     char))))
+
+       (set-buffer-canvas-needs-update?! b #f))))
+  (g:frame-perf-plus! gf 'buffers bt)
+  (buffer-canvas b))
+
 (define (rstate-render! gf d rs)
   (define full-w (exact->inexact (g:frame-width gf)))
   (define full-h (exact->inexact (g:frame-height gf)))
@@ -154,44 +193,7 @@
   (define hmargin (* char-width margin%))
   (define vmargin (* char-height margin%))
 
-  (define-values (bt _)
-    (time-it
-     42
-     (for ([(bid b) (rstate-buffers rs)])
-       (when (buffer-canvas-needs-update? b)
-         (define rs-o (rstate-overlay rs))
-         (define b-o (buffer-overlay b))
-
-         (define max-row (buffer-max-row b))
-         (define max-col (buffer-max-cols b))
-
-         (define b-c
-           (cond [(buffer-canvas b) => (λ (x) x)]
-                 [else
-                  (define c (d:canvas d c:bg))
-                  (set-buffer-canvas! b c)
-                  c]))
-
-         (d:canvas-refresh!
-          b-c max-row max-col
-          (for/list ([row (in-range max-row)])
-            (define l (buffer-line b row))
-            (define row-o (hash-ref (buffer-row->overlay b) row make-hasheq))
-            (for/list ([char (in-string l)]
-                       [col (in-naturals)])
-              (define col-o
-                (hash-ref (buffer-row*col->overlay b) (cons row col) make-hasheq))
-              ;; xxx sometimes these look gross and clipped off. I
-              ;; think it is because the textures aren't powers of 2
-              (d:glyph row col
-                       (if (overlay-ref (rs-o b-o row-o col-o) 'highlight? #f)
-                         c:red
-                         c:fg-mi)
-                       c:bg
-                       char))))
-
-         (set-buffer-canvas-needs-update?! b #f)))))
-  (g:frame-perf! gf 'buffers bt)
+  (g:frame-perf-zero! gf 'buffers)
 
   (define (view->elements x y w h focused? v)
     (match-define (view (cursor row col) bid) v)
@@ -200,7 +202,7 @@
     (define cursor-bm-x (* col char-width))
 
     (define b (rstate-buffer rs bid))
-    (define b-c (buffer-canvas b))
+    (define b-c (buffer-canvas/update rs gf d b))
     (define b-bm (d:canvas-bitmap b-c))
     (define b-bm-w (d:canvas-bitmap-width b-c))
     (define b-bm-h (d:canvas-bitmap-height b-c))

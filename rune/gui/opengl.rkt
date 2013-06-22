@@ -229,6 +229,11 @@
 (define (frame-perf! gf k v)
   (hash-set! (frame-perf-hash gf) k v)
   (update-label! gf))
+(define (frame-perf-plus! gf k dv)
+  (define v (hash-ref (frame-perf-hash gf) k 0))
+  (frame-perf! gf k (+ v dv)))
+(define (frame-perf-zero! gf k)
+  (frame-perf! gf k 0))
 
 (define (update-label! gf)
   (define h (frame-perf-hash gf))
@@ -279,6 +284,12 @@
        context/c)]
   [frame-perf!
    (-> frame? symbol? number?
+       void)]
+  [frame-perf-plus!
+   (-> frame? symbol? number?
+       void)]
+  [frame-perf-zero!
+   (-> frame? symbol?
        void)]
   [frame-refresh!
    (-> frame? string? (tree/c element?)
