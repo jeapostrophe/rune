@@ -22,7 +22,7 @@
               font% font-cache-tex font-cache-hash [font-cache-side #:mutable]
               char-width char-height))
 (struct canvas
-        (bg-cr d rrow rcol arow acol bm gp)
+        (bg-cr d rw rh arow acol bm gp)
         #:mutable)
 
 (define (make-drawer ctxt colors face size)
@@ -50,7 +50,7 @@
          #:uniform ColorTex 1
          #:uniform FontTex 2
          #:dynuniform CharSide
-         #:dynuniform in_Viewport_rc
+         #:dynuniform in_Viewport
          #:texture 1 (colors-tex (drawer-colors d))
          #:texture 2 (drawer-font-cache-tex d)
          #:attribute in_Position_rc (row col)
@@ -64,35 +64,32 @@
          #:fragment (include-template "gfragment.glsl"))
 
        (values (allocate-render-texture 0 0)
-               (λ (dirty? mrow mcol gs)
+               (λ (dirty? mw mh gs)
                  (GlyphProgram
                   [#:when dirty? [#:uniform CharSide (drawer-font-cache-side d)]]
-                  [#:uniform in_Viewport_rc
-                             (f32vector (exact->inexact mrow)
-                                        (exact->inexact mcol))]
+                  [#:uniform in_Viewport
+                             (f32vector (exact->inexact mw) (exact->inexact mh))]
                   gs))))))
   (canvas bg-cr d -1 -1 -1 -1 canvas-tex gp))
 
 (define (ensure-size! c nrow ncol)
-  (define old-rrow (canvas-rrow c))
-  (define old-rcol (canvas-rcol c))
+  (define d (canvas-d c))
+  (define char-width (drawer-char-width d))
+  (define char-height (drawer-char-height d))
+  (define old-rrow (/ (canvas-rh c) char-height))
+  (define old-rcol (/ (canvas-rw c) char-width))
   (unless (and (<= nrow old-rrow)
                (<= ncol old-rcol))
-    (define d (canvas-d c))
-    (define char-width (drawer-char-width d))
-    (define char-height (drawer-char-height d))
-
     (define new-rrow (max (* 2 old-rrow) nrow))
     (define new-rcol (max (* 2 old-rcol) ncol))
+    (define rw (inexact->exact (ceiling (* new-rcol char-width))))
+    (define rh (inexact->exact (ceiling (* new-rrow char-height))))
     ((drawer-ctxt d)
      (λ ()
-       (resize-render-texture!
-        (canvas-bm c)
-        (inexact->exact (ceiling (* new-rcol char-width)))
-        (inexact->exact (ceiling (* new-rrow char-height))))))
+       (resize-render-texture! (canvas-bm c) rw rh)))
 
-    (set-canvas-rrow! c new-rrow)
-    (set-canvas-rcol! c new-rcol))
+    (set-canvas-rw! c rw)
+    (set-canvas-rh! c rh))
 
   (set-canvas-arow! c nrow)
   (set-canvas-acol! c ncol))
@@ -104,9 +101,9 @@
 (define (canvas-bitmap-height c)
   (* (canvas-arow c) (drawer-char-height (canvas-d c))))
 (define (canvas-real-width c)
-  (* (canvas-rcol c) (drawer-char-width (canvas-d c))))
+  (exact->inexact (canvas-rw c)))
 (define (canvas-real-height c)
-  (* (canvas-rrow c) (drawer-char-height (canvas-d c))))
+  (exact->inexact (canvas-rh c)))
 
 (define-opengl-struct glyphi
   ([row _uint16]
@@ -199,10 +196,10 @@
       (glClearColor (exact->inexact (/ bg-r 255))
                     (exact->inexact (/ bg-g 255))
                     (exact->inexact (/ bg-b 255))
-                    1.0)      
+                    1.0)
       (glClear GL_COLOR_BUFFER_BIT)
 
-      (send-to-GlyphProgram fc-tex-dirty? rrow rcol gs))))  
+      (send-to-GlyphProgram fc-tex-dirty? rrow rcol gs))))
   (void))
 
 (define nat? exact-nonnegative-integer?)

@@ -3,7 +3,7 @@ uniform float @|CharSide|;
 uniform float @|CharWidth|;
 uniform float @|CharHeight|;
 uniform sampler2D @|ColorTex|;
-uniform vec2 @|in_Viewport_rc|;
+uniform vec2 @|in_Viewport|;
 
 in uvec2 @|in_Position_rc|;
 in ivec2 @|in_Vertex|;
@@ -20,13 +20,11 @@ void main ( void )
 {
   vec2 in_Position = vec2( @|in_Position_rc|.y * @|CharWidth|,
                            @|in_Position_rc|.x * @|CharHeight| );
-  vec2 in_Viewport = vec2( @|in_Viewport_rc|.y * @|CharWidth|,
-                           @|in_Viewport_rc|.x * @|CharHeight| );
 
   mat4 ZeMatrix =
     glTranslate( in_Position.x, in_Position.y, 0.0)
-    * glOrtho(0.0, in_Viewport.x,
-              0.0, in_Viewport.y,
+    * glOrtho(0.0, @|in_Viewport|.x,
+              0.0, @|in_Viewport|.y,
               1.0, -1.0);
   float px = (@|in_Vertex|.x * @|CharWidth|);
   float py = (@|in_Vertex|.y * @|CharHeight|);
