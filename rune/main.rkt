@@ -497,5 +497,13 @@
            (first
             (buffers->focuses
              #t
+             ;; xxx too many windows causes a problem
+
+             ;; xxx is texelfetch the solution? (I tried this and it
+             ;; didn't seem okay)
+             
+             ;; xxx when a buffer isn't large enough for the window,
+             ;; there's also a problem. (seems easier to fix)
+
              ;; xxx stuff is broken in last window
              (take (hash-keys buffers) 5))))))
