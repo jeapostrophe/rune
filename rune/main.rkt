@@ -38,12 +38,10 @@
 
 (define (buffer-max-row b)
   (sub1 (z:buffer-rows (buffer-content b))))
-(define (buffer-max-col b r)
-  ;; xxx not entirely correct, but it's useful to be one more so that
-  ;; you can type on lines with no characters currently and write
-  ;; something at the end of a line. I think I should add another
-  ;; function to distinguish the uses
+(define (buffer-row-cols b r)
   (z:buffer-row-cols (buffer-content b) r))
+(define (buffer-max-col b r)
+  (sub1 (buffer-row-cols b r)))
 (define (buffer-max-cols b)
   (for/fold ([mc 0])
       ([r (in-range (add1 (buffer-max-row b)))])
@@ -89,15 +87,15 @@
        [(< maybe-nc 0)
         ;; Move back one row and to the far right
         (define nr (max 0 (sub1 r)))
-        (cursor nr (buffer-max-col b nr))]
-       [(< (buffer-max-col b r) maybe-nc)
+        (cursor nr (buffer-row-cols b nr))]
+       [(< (buffer-row-cols b r) maybe-nc)
         (define nr (min (add1 r) (buffer-max-row b)))
         (cursor nr 0)]
        [else
         (cursor r maybe-nc)])]
     [(zero? dc)
      (define nr (clamp 0 (+ r dr) (buffer-max-row b)))
-     (cursor nr (clamp 0 c (buffer-max-col b nr)))]))
+     (cursor nr (clamp 0 c (buffer-row-cols b nr)))]))
 
 (struct view (cursor bid))
 (define (view-buffer rs v)
@@ -236,8 +234,8 @@
     ;; Render a buffer
     (list*
      (g:bitmap (+ x hmargin) (+ y vmargin) ew eh
-               ;; xxx put in b-bm structure?
-               b-bm (d:canvas-real-width b-c) (d:canvas-real-height b-c) dx dy)
+               b-bm (d:canvas-real-width b-c) (d:canvas-real-height b-c)
+               dx dy)
 
      ;; Outline
      (g:outline x y w h
