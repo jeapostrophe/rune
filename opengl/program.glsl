@@ -23,3 +23,16 @@ mat4 glTranslate( float x, float y, float z ) {
               0.0, 0.0, 1.0, z,
               0.0, 0.0, 0.0, 1.0);
 }
+
+float works_for_tennis_bg_and_menu ( float v ) {
+  return floor(v)+0.5;
+}
+
+float clampit ( float v ) {
+  return works_for_tennis_bg_and_menu(v);
+}
+
+vec4 texture2DB ( sampler2D tex, vec2 uv ) {
+  ivec2 px = ivec2(clampit(uv.x), clampit(uv.y));
+  return texelFetch( tex, px, 0);
+}

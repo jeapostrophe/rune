@@ -3,7 +3,6 @@ uniform vec2 @|in_Viewport|;
 
 in vec2 @|in_Position|;
 in vec2 @|in_Dimension|;
-in vec2 @|in_TexDimension|;
 in ivec2 @|in_Vertex|;
 in vec2 @|in_Offset|;
 
@@ -30,8 +29,6 @@ void main ( void )
   } else{
     ry = 0;
   }
-  @|TexCoord| = vec2( (@|in_Offset|.x + (@|in_Vertex|.x * @|in_Dimension|.x)) /
-                      @|in_TexDimension|.x,
-                      (@|in_Offset|.y + (ry * @|in_Dimension|.y)) /
-                      @|in_TexDimension|.y);
+  @|TexCoord| = vec2( (@|in_Offset|.x + (@|in_Vertex|.x * @|in_Dimension|.x)),
+                      (@|in_Offset|.y + (ry * @|in_Dimension|.y)));
 }

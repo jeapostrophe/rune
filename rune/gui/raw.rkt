@@ -5,7 +5,7 @@
          racket/async-channel
          racket/match
          racket/class
-         rune/lib/tree
+         opengl/tree
          rune/lib/colors
          rune/lib/context
          rune/lib/timing)

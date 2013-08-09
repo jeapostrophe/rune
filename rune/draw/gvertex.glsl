@@ -30,13 +30,10 @@ void main ( void )
   float py = (@|in_Vertex|.y * @|CharHeight|);
   gl_Position = vec4( px, py, 0.0, 1.0) * ZeMatrix;
 
-  float CharTexWidth = @|CharSide| * @|CharWidth|;
-  float CharTexHeight = @|CharSide| * @|CharHeight|;
   float ci = float(@|in_Char|);
   float cy = floor(ci / @|CharSide|);
   float cx = ci - cy * @|CharSide|;
-  @|TexCoord| = vec2( ((cx * @|CharWidth|) + px) / CharTexWidth,
-                      ((cy * @|CharHeight|) + py) / CharTexHeight );
+  @|TexCoord| = vec2( ((cx * @|CharWidth|) + px), ((cy * @|CharHeight|) + py) );
 
   uint FCR = (@|in_Color|) & uint(0x0F);
   uint BCR = ((@|in_Color|) >> 4) & uint(0x0F);

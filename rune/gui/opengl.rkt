@@ -67,23 +67,13 @@
    [y _float]
    [w _float]
    [h _float]
-   ;; Optimization Idea: It seems like this could be a
-   ;; uniform. However, it would be awkward to communicate it from the
-   ;; main program to here unless we created an intermediate structure
-   ;; that would hold this, but then have it removed before being sent
-   ;; to OpenGL. If I did that, then I think I would actually do MORE
-   ;; allocation per call, because I'd only save these two floats on
-   ;; one side. Overall, I don't think it would be worth it.
-   [tw _float]
-   [th _float]
-
    [dx _float]
    [dy _float]
 
    [vh _sint8]
    [vv _sint8]))
 (define (bitmap x y w h bm tw th dx dy)
-  (make-bitmapi bm x y w h tw th dx dy 0 0))
+  (make-bitmapi bm x y w h dx dy 0 0))
 
 (define-opengl-struct outlinei
   ([x _float]
@@ -135,7 +125,6 @@
            #:uniform BitmapTex 0
            #:dynuniform in_Viewport
            #:attribute in_Position (x y)
-           #:attribute in_TexDimension (tw th)
            #:attribute in_Dimension (w h)
            #:attribute in_Vertex (vh vv)
            #:attribute in_Offset (dx dy)

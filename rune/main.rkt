@@ -471,6 +471,13 @@
   (require racket/runtime-path)
   (define-runtime-path here ".")
   (define files
+    ;; xxx this crashes the shader because tex image dimensions are
+    ;; too big... so remove bitmaps and just render the segment that
+    ;; is visible? the big question is then whether this will be
+    ;; slower when the same image appears many times
+
+    #;
+    (list "/home/jay/Dev/scm/github.jeapostrophe/home/etc/games.org")
     (find-files (λ (p)
                   (member (filename-extension p)
                           '(#"rkt" #"org" #"glsl")))
@@ -505,5 +512,5 @@
              ;; xxx when a buffer isn't large enough for the window,
              ;; there's also a problem. (seems easier to fix)
 
-             ;; xxx stuff is broken in last window
+             ;; xxx stuff is broken in last window @ 5
              (take (hash-keys buffers) 5))))))

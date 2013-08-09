@@ -7,9 +7,11 @@ in vec2 @|TexCoord|;
 
 out vec4 out_Color;
 
+@|GLSL-Library|
+
 void main ( void )
 {
-  vec4 TexColor = texture2D(@|FontTex|, @|TexCoord|);
+  vec4 TexColor = texture2DB(@|FontTex|, @|TexCoord|);
 
   // using r just because the texture is just monochrome.
   // Optimization Idea: maybe I should use GL_RED on the texture?

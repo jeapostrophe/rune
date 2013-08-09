@@ -4,7 +4,7 @@
          racket/match
          racket/class
          rune/lib/context
-         rune/lib/tree
+         opengl/tree
          rune/lib/colors
          (only-in racket/gui/base make-screen-bitmap))
 
