@@ -55,7 +55,7 @@
            (sending)))))
 
     (define/public (command cmd)
-      (async-channel-put to-ac cmd))    
+      (async-channel-put to-ac cmd))
 
     ;; xxx for some reason the config file for this gets ignored
     (command "set show_status = off")))
