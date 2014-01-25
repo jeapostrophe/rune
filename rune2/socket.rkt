@@ -5,6 +5,7 @@
          mred/private/wx/gtk/widget
          mred/private/wx/gtk/window
          mred/private/wx/gtk/client-window
+         (prefix-in gui: racket/gui/base)
          mred/private/wx/gtk/panel
          mred/private/wx/gtk/types)
 
@@ -20,13 +21,12 @@
 (define-gtk gtk_widget_size_allocate (_fun _GtkWidget _GtkAllocation-pointer -> _void))
 
 (define socket%
-  (class* object% ()
-    (init parent)
+  (class gui:panel%
+    (super-new)
 
     (define gtk (as-gtk-allocation (gtk_socket_new)))
     (gtk_widget_show gtk)
-
-    (gtk_container_add (send parent get-client-handle) gtk)
+    (gtk_container_add (send this get-client-handle) gtk)
 
     (define filled? #f)
     (define (protect)
@@ -46,11 +46,13 @@
       (protect)
       (gtk_socket_steal gtk id))
 
-    (define/public (set-size w h)
+    (define/override (on-size w h)
+      (socket-set-size w h)
+      (super on-size w h))
+
+    (define (socket-set-size w h)
       (define child-gtk gtk)
       (define x 0)
       (define y 0)
       (gtk_widget_set_size_request child-gtk w h)
-      (gtk_widget_size_allocate child-gtk (make-GtkAllocation x y w h)))
-
-    (super-new)))
+      (gtk_widget_size_allocate child-gtk (make-GtkAllocation x y w h)))))
