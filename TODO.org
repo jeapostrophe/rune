@@ -82,6 +82,12 @@ Commands could search their body for overlays of a specific type
 * Tasks
 ** DONE implement gap buffer
    CLOSED: [2013-06-07 Fri 16:17]
+** TODO unicode char input
+** TODO open by collection path vs file
+** TODO font rendering
+   http://www.reddit.com/r/gamedev/comments/1q6j70/sane_way_of_rendering_accurate_text_in_gles2/
+** TODO small keyboard shortcut set
+** TODO contour view
 ** TODO generalize three implementations of zipper
    two in zip-buffer and one in ctxt:layer
 ** DONE rendering
@@ -105,6 +111,9 @@ Commands could search their body for overlays of a specific type
    http://yi-editor.blogspot.com/2008/11/incremental-parsing-in-yi.html
 ** TODO think about emacsy
    http://shanecelis.github.io/emacsy/2013/06/05/google-summer-of-code-2013-emacsy/
+** TODO add bold and italic text?
+** TODO uzbl and its structure of -core + event handler + scripts
+   but use zeromq?
 ** TODO plan structure
    like a microkernel...
    - state manager
@@ -228,6 +237,15 @@ Commands could search their body for overlays of a specific type
    basic editor -> buffers/windows/frames -> multiple modes ->
    terminal -> shell -> org-mode -> canvas buffers (eog, evince) ->
    web buffers
+** TODO rss reader
+   https://github.com/sloonz/maildir-feed
+** TODO notmuch email
+   https://wiki.archlinux.org/index.php/OfflineIMAP#Gmail_configuration
+   https://wiki.archlinux.org/index.php/Msmtp
+   https://wiki.archlinux.org/index.php/Isync
+   http://notmuchmail.org/
+   http://jason.the-graham.com/2011/01/10/email_with_mutt_offlineimap_imapfilter_msmtp_archivemail/
+   https://github.com/OfflineIMAP/offlineimap/pull/43
 ** DONE internal: change key map to arrows
    CLOSED: [2013-06-14 Fri 12:59]
 ** DONE view display adjusting to cursor
@@ -252,6 +270,10 @@ Commands could search their body for overlays of a specific type
 ** TODO command: edit files
 ** TODO command: save files
 ** TODO meta: detect file changed on disk
+** TODO text windows of different flavors
+   random access - text file
+   append only - terminal session
+   read-only - less/more
 ** TODO terminal
    Make every command invocation create a new set of buffers that is
    "spliced" into the terminal buffer, so that you get a record the
@@ -264,9 +286,8 @@ Commands could search their body for overlays of a specific type
    the atlas?
 ** TODO compositing
    https://github.com/chjj/compton/blob/master/src/opengl.c
-** DONE automatically increase font-size so that 80chars fit width-wise and no more
-   CLOSED: [2013-06-22 Sat 13:38]
-** TODO embed chromium
+** TODO automatically increase font-size so that 80chars fit width-wise and no more
+** TODO embed chromium or just use uzbl?
    CEF3 seems to do it
 
    big challenge might be doing off-screen rendering and then
@@ -274,3 +295,24 @@ Commands could search their body for overlays of a specific type
 
 ** TODO integrate with anthy for JP input
 ** TODO woman
+** TODO explorer
+   https://github.com/tonyg/racket-explorer
+** TODO cow repl
+   https://github.com/takikawa/racket-cow-repl
+** TODO in shell, make ls sensitive to .gitignore
+** TODO live programming
+   especially with text, picts, images, and graphs
+** TODO look at lamdu
+   http://peaker.github.io/lamdu/
+** TODO push notify on toolbar vs poll
+** TODO hide stuff that isn't active
+   like music playing, etc
+** TODO focus button that prevents switching windows/workspaces/etc
+** TODO fonts
+   http://www.reddit.com/r/gamedev/comments/1rl412/favorite_free_8bitpixel_font/
+   15-25 pixels
+   monospace vs proportional?
+   Alix FB - http://www.fontbureau.com/fonts/AlixFB/
+   Nitti
+   http://vim.wikia.com/wiki/The_perfect_programming_font
+   http://www.itworld.com/slideshow/104321/13-fonts-make-programmer-smile-359589#slide11
