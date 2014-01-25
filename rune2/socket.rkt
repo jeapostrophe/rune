@@ -18,7 +18,8 @@
 (define-gtk gtk_socket_steal (_fun _GtkWidget _int -> _void))
 (define-gtk gtk_socket_get_id (_fun _GtkWidget -> _int))
 
-(define-gtk gtk_widget_size_allocate (_fun _GtkWidget _GtkAllocation-pointer -> _void))
+(define-gtk gtk_widget_size_allocate 
+  (_fun _GtkWidget _GtkAllocation-pointer -> _void))
 
 (define socket%
   (class gui:panel%
