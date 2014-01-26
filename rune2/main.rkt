@@ -43,30 +43,30 @@
     (thread
      (λ ()
        (let sending ([name->to (hasheq)] [msgs empty])
-         (let ([msgs
-                (filter
-                 (match-lambda
-                  [(cons name cmd)
-                   (define to-uzbl (hash-ref name->to name #f))
-                   (cond
-                     [to-uzbl
-                      (printf "CMD: ~a\n" cmd)
-                      (displayln cmd to-uzbl)
-                      (flush-output to-uzbl)
-                      #f]
-                     [else
-                      #t])])
-                 msgs)])
-           (sync
-            (handle-evt
-             new-to-ch
-             (match-lambda
-              [(cons name to)
-               (sending (hash-set name->to name to) msgs)]))
-            (handle-evt
-             to-ch
-             (λ (m)
-               (sending name->to (cons m msgs))))))))))
+         (define msgs-p
+           (filter
+            (match-lambda
+             [(cons name cmd)
+              (define to-uzbl (hash-ref name->to name #f))
+              (cond
+                [to-uzbl
+                 (printf "CMD: ~a\n" cmd)
+                 (displayln cmd to-uzbl)
+                 (flush-output to-uzbl)
+                 #f]
+                [else
+                 #t])])
+            msgs))
+         (sync
+          (handle-evt
+           new-to-ch
+           (match-lambda
+            [(cons name to)
+             (sending (hash-set name->to name to) msgs-p)]))
+          (handle-evt
+           to-ch
+           (λ (m)
+             (sending name->to (cons m msgs-p)))))))))
 
   (define (attach-uzbl name so)
     (define s-id (send so get-id))
