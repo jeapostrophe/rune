@@ -6,6 +6,7 @@
          racket/file
          rune2/socket
          unstable/socket
+         racket/match
          racket/port
          racket/list
          racket/async-channel
@@ -36,6 +37,37 @@
                (displayln l)
                (receiving froms)))))))))
 
+  (define new-to-ch (make-async-channel))
+  (define to-ch (make-async-channel))
+  (define sender-t
+    (thread
+     (λ ()
+       (let sending ([name->to (hasheq)] [msgs empty])
+         (let ([msgs
+                (filter
+                 (match-lambda
+                  [(cons name cmd)
+                   (define to-uzbl (hash-ref name->to name #f))
+                   (cond
+                     [to-uzbl
+                      (printf "CMD: ~a\n" cmd)
+                      (displayln cmd to-uzbl)
+                      (flush-output to-uzbl)
+                      #f]
+                     [else
+                      #t])])
+                 msgs)])
+           (sync
+            (handle-evt
+             new-to-ch
+             (match-lambda
+              [(cons name to)
+               (sending (hash-set name->to name to) msgs)]))
+            (handle-evt
+             to-ch
+             (λ (m)
+               (sending name->to (cons m msgs))))))))))
+
   (define (attach-uzbl name so)
     (define s-id (send so get-id))
 
@@ -48,7 +80,6 @@
     (close-output-port stdin)
 
     (define uzbl-socket-pth (build-path SOCKET-DIR (~a "uzbl_socket_" name)))
-    (define to-ac (make-async-channel))
     (define communicator
       (thread
        (λ ()
@@ -62,16 +93,10 @@
            (unix-socket-connect uzbl-socket-pth))
 
          (async-channel-put new-from-ch from-uzbl)
-
-         (let sending ()
-           (define cmd (async-channel-get to-ac))
-           (printf "CMD: ~a\n" cmd)
-           (displayln cmd to-uzbl)
-           (flush-output to-uzbl)
-           (sending)))))
+         (async-channel-put new-to-ch (cons name to-uzbl)))))
 
     (define (command cmd)
-      (async-channel-put to-ac cmd))
+      (async-channel-put to-ch (cons name cmd)))
 
     ;; xxx for some reason the config file for this gets ignored
     (command "set show_status = off")
