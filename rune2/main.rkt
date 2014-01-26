@@ -15,54 +15,57 @@
 
 (define SOCKET-DIR "/tmp/rune")
 
-(define (attach-uzbl name so)
-  (define s-id (send so get-id))
+(define (make-uzbl-manager)
+  (define (attach-uzbl name so)
+    (define s-id (send so get-id))
 
-  (define-values (sp _o stdin _e)
-    (subprocess (current-output-port) #f (current-error-port)
-                UZBL-PATH
-                "-c" default-config
-                "-n" (~a name)
-                "-s" (number->string s-id)))
-  (close-output-port stdin)
+    (define-values (sp _o stdin _e)
+      (subprocess (current-output-port) #f (current-error-port)
+                  UZBL-PATH
+                  "-c" default-config
+                  "-n" (~a name)
+                  "-s" (number->string s-id)))
+    (close-output-port stdin)
 
-  (define uzbl-socket-pth (build-path SOCKET-DIR (~a "uzbl_socket_" name)))
-  (define to-ac (make-async-channel))
-  (define communicator
-    (thread
-     (λ ()
-       ;; xxx there should be a better way
-       (let wait ()
-         (unless (file-exists? uzbl-socket-pth)
-           (sleep)
-           (wait)))
+    (define uzbl-socket-pth (build-path SOCKET-DIR (~a "uzbl_socket_" name)))
+    (define to-ac (make-async-channel))
+    (define communicator
+      (thread
+       (λ ()
+         ;; xxx there should be a better way
+         (let wait ()
+           (unless (file-exists? uzbl-socket-pth)
+             (sleep)
+             (wait)))
 
-       (define-values (from-uzbl to-uzbl)
-         (unix-socket-connect uzbl-socket-pth))
+         (define-values (from-uzbl to-uzbl)
+           (unix-socket-connect uzbl-socket-pth))
 
-       (define receiver
-         (thread
-          (λ ()
-            (let receiving ()
-              (define l (read-line from-uzbl))
+         (define receiver
+           (thread
+            (λ ()
+              (let receiving ()
+                (define l (read-line from-uzbl))
                 ;;; xxx should analyze these
-              (displayln l)
-              (receiving)))))
+                (displayln l)
+                (receiving)))))
 
-       (let sending ()
-         (define cmd (async-channel-get to-ac))
-         (printf "CMD: ~a\n" cmd)
-         (displayln cmd to-uzbl)
-         (flush-output to-uzbl)
-         (sending)))))
+         (let sending ()
+           (define cmd (async-channel-get to-ac))
+           (printf "CMD: ~a\n" cmd)
+           (displayln cmd to-uzbl)
+           (flush-output to-uzbl)
+           (sending)))))
 
-  (define (command cmd)
-    (async-channel-put to-ac cmd))
+    (define (command cmd)
+      (async-channel-put to-ac cmd))
 
-  ;; xxx for some reason the config file for this gets ignored
-  (command "set show_status = off")
+    ;; xxx for some reason the config file for this gets ignored
+    (command "set show_status = off")
 
-  command)
+    command)
+
+  attach-uzbl)
 
 ;; xxx experiment with mplayer:
 ;; http://cpansearch.perl.org/src/GBROWN/Gtk2-Ex-MPlayerEmbed-0.02/lib/Gtk2/Ex/MPlayerEmbed.pm
@@ -75,6 +78,8 @@
   (define rf (new frame% [label "Rune"]))
   (define rp (new vertical-panel% [parent rf]))
 
+  (define uzbl-manager (make-uzbl-manager))
+
   ;; xxx make everything but body as tight in height as possible [by
   ;; putting it in a div and then reading its height via JS]
   ;; http://www.uzbl.org/wiki/fit-window
@@ -83,20 +88,20 @@
          [min-height 30]
          [stretchable-height #f]))
   (define uz:top-status
-    (attach-uzbl 'top so:top-status))
+    (uzbl-manager 'top so:top-status))
 
   ;; xxx make this like xmonad
   (define rbp (new horizontal-panel% [parent rp]))
   (define so:body (new socket% [parent rbp]))
   (define uz:body
-    (attach-uzbl (current-milliseconds) so:body))
+    (uzbl-manager (current-milliseconds) so:body))
 
   (define so:bot-status
     (new socket% [parent rp]
          [min-height 30]
          [stretchable-height #f]))
   (define uz:bot-status
-    (attach-uzbl 'bot so:bot-status))
+    (uzbl-manager 'bot so:bot-status))
 
   (require racket/runtime-path)
   (define-runtime-path here ".")
