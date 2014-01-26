@@ -14,7 +14,6 @@
 
 (define UZBL-PATH "/usr/bin/uzbl-core")
 (define-runtime-path default-config "uzbl.config")
-
 (define SOCKET-DIR "/tmp/rune")
 
 (define (key-event->rune-key ke)
@@ -181,18 +180,19 @@
          [stretchable-height #f]))
   (uzbl-attach! 'top so:top-status)
 
-  ;; xxx make this like xmonad
-  (define rbp
-    (new horizontal-panel% [parent rp]))
-  (define so:body (new socket% [parent rbp]))
   (define cv
-    (new rune-canvas% [parent so:body]
+    (new rune-canvas% [parent so:top-status]
          [on-char-f
           (λ (ke)
             (define rk (key-event->rune-key ke))
             (when rk
               (async-channel-put event-sink (event:rune-key rk))))]))
   (send cv focus)
+
+  ;; xxx make this like xmonad
+  (define rbp
+    (new horizontal-panel% [parent rp]))
+  (define so:body (new socket% [parent rbp]))  
   (define body-id (current-milliseconds))
   (uzbl-attach! body-id so:body)
 
@@ -220,7 +220,7 @@
   (thread
    (λ ()
      (for ([i (in-range 100)])
-       (uzbl-cmd! 'bot (format "set inject_html = ~a" i))
+       (uzbl-cmd! 'bot (format "set inject_html = <strong>~a</strong>" i))
        (sleep 1))))
 
   ;; xxx make an api to tell this program what to do (send commands to
