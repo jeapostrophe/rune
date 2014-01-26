@@ -14,54 +14,52 @@
 
 (define SOCKET-DIR "/tmp/rune")
 
-(define uzbl%
-  (class socket%
-    (super-new)
+(define (attach-uzbl so)
+  (define s-id (send so get-id))
 
-    (inherit get-id)
+  (define-values (sp _o stdin _e)
+    (subprocess (current-output-port) #f (current-error-port)
+                UZBL-PATH "-c" default-config "-s" (number->string s-id)))
+  (close-output-port stdin)
 
-    (define s-id (get-id))
-    (define-values (sp _o stdin _e)
-      (subprocess (current-output-port) #f (current-error-port)
-                  UZBL-PATH "-c" default-config "-s" (number->string s-id)))
-    (close-output-port stdin)
+  (define pid (subprocess-pid sp))
+  (define uzbl-socket-pth (build-path SOCKET-DIR (format "uzbl_socket_~a" pid)))
+  (define to-ac (make-async-channel))
+  (define communicator
+    (thread
+     (λ ()
+       ;; xxx there should be a better way
+       (let wait ()
+         (unless (file-exists? uzbl-socket-pth)
+           (sleep)
+           (wait)))
 
-    (define pid (subprocess-pid sp))
-    (define uzbl-socket-pth (build-path SOCKET-DIR (format "uzbl_socket_~a" pid)))
-    (define to-ac (make-async-channel))
-    (define communicator
-      (thread
-       (λ ()
-         ;; xxx there should be a better way
-         (let wait ()
-           (unless (file-exists? uzbl-socket-pth)
-             (sleep)
-             (wait)))
+       (define-values (from-uzbl to-uzbl)
+         (unix-socket-connect uzbl-socket-pth))
 
-         (define-values (from-uzbl to-uzbl)
-           (unix-socket-connect uzbl-socket-pth))
-
-         (define receiver
-           (thread
-            (λ ()
-              (let receiving ()
-                (define l (read-line from-uzbl))
+       (define receiver
+         (thread
+          (λ ()
+            (let receiving ()
+              (define l (read-line from-uzbl))
                 ;;; xxx should analyze these
-                (displayln l)
-                (receiving)))))
+              (displayln l)
+              (receiving)))))
 
-         (let sending ()
-           (define cmd (async-channel-get to-ac))
-           (printf "CMD: ~a\n" cmd)
-           (displayln cmd to-uzbl)
-           (flush-output to-uzbl)
-           (sending)))))
+       (let sending ()
+         (define cmd (async-channel-get to-ac))
+         (printf "CMD: ~a\n" cmd)
+         (displayln cmd to-uzbl)
+         (flush-output to-uzbl)
+         (sending)))))
 
-    (define/public (command cmd)
-      (async-channel-put to-ac cmd))
+  (define (command cmd)
+    (async-channel-put to-ac cmd))
 
-    ;; xxx for some reason the config file for this gets ignored
-    (command "set show_status = off")))
+  ;; xxx for some reason the config file for this gets ignored
+  (command "set show_status = off")
+
+  command)
 
 ;; xxx experiment with mplayer:
 ;; http://cpansearch.perl.org/src/GBROWN/Gtk2-Ex-MPlayerEmbed-0.02/lib/Gtk2/Ex/MPlayerEmbed.pm
@@ -77,19 +75,25 @@
   ;; xxx make everything but body as tight in height as possible [by
   ;; putting it in a div and then reading its height via JS]
   ;; http://www.uzbl.org/wiki/fit-window
-  (define uz:top-status
-    (new uzbl% [parent rp]
+  (define so:top-status
+    (new socket% [parent rp]
          [min-height 30]
          [stretchable-height #f]))
+  (define uz:top-status
+    (attach-uzbl so:top-status))
 
   ;; xxx make this like xmonad
   (define rbp (new horizontal-panel% [parent rp]))
-  (define uz:body (new uzbl% [parent rbp]))
+  (define so:body (new socket% [parent rbp]))
+  (define uz:body
+    (attach-uzbl so:body))
 
-  (define uz:bot-status
-    (new uzbl% [parent rp]
+  (define so:bot-status
+    (new socket% [parent rp]
          [min-height 30]
          [stretchable-height #f]))
+  (define uz:bot-status
+    (attach-uzbl so:bot-status))
 
   (require racket/runtime-path)
   (define-runtime-path here ".")
@@ -98,8 +102,8 @@
             (path->string
              (build-path here h))))
 
-  (send uz:top-status command (here-uri "top.html"))
-  (send uz:body command "uri http://google.com")
-  (send uz:bot-status command (here-uri "bot.html"))
+  (uz:top-status (here-uri "top.html"))
+  (uz:body "uri http://google.com")
+  (uz:bot-status (here-uri "bot.html"))
 
   (send rf show #t))
