@@ -164,6 +164,26 @@
   (define rbp
     (new horizontal-panel% [parent rp]))
   (define so:body (new socket% [parent rbp]))
+  (define cv
+    (new rune-canvas% [parent so:body]
+         [on-char-f
+          (λ (ke)
+            (define release?
+              (eq? 'release (send ke get-key-code)))
+            (define e
+              (event:gui-keyevent
+               (send ke get-shift-down)
+               (send ke get-control-down)
+               (send ke get-meta-down)
+               (send ke get-alt-down)
+               (send ke get-caps-down)
+               release?
+               (if release?
+                 (send ke get-key-release-code)
+                 (send ke get-key-code))))
+
+            (async-channel-put event-sink e))]))
+  (send cv focus)
   (define uz:body
     (uzbl-manager (current-milliseconds) so:body))
 
@@ -173,6 +193,10 @@
          [stretchable-height #f]))
   (define uz:bot-status
     (uzbl-manager 'bot so:bot-status))
+
+  (send rf show #t)
+
+  ;; core setup is over
 
   (require racket/runtime-path)
   (define-runtime-path here ".")
@@ -198,27 +222,6 @@
        (displayln m)
        (loop))))
 
-  (define cv
-    (new rune-canvas% [parent so:body]
-         [on-char-f
-          (λ (ke)
-            (define release?
-              (eq? 'release (send ke get-key-code)))
-            (define e
-              (event:gui-keyevent
-               (send ke get-shift-down)
-               (send ke get-control-down)
-               (send ke get-meta-down)
-               (send ke get-alt-down)
-               (send ke get-caps-down)
-               release?
-               (if release?
-                 (send ke get-key-release-code)
-                 (send ke get-key-code))))
-
-            (async-channel-put event-sink e))]))
-
   ;; xxx analyze events and write a basic key/event forwarding system
 
-  (send rf show #t)
-  (send cv focus))
+  (void))
