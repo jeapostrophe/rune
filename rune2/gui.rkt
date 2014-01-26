@@ -159,6 +159,15 @@
   (define rp
     (new vertical-panel% [parent rf]))
 
+  (define command-source (make-async-channel))
+  (define command-reader-t
+    (thread
+     (λ ()
+       (let reading ()
+         (define c (read))
+         (async-channel-put command-source c)
+         (reading)))))
+
   (define event-sink (make-async-channel))
 
   (define uzbl-manager
@@ -186,13 +195,13 @@
           (λ (ke)
             (define rk (key-event->rune-key ke))
             (when rk
-              (async-channel-put event-sink (event:rune-key rk))))]))
+              (async-channel-put event-sink (event:rune:key rk))))]))
   (send cv focus)
 
   ;; xxx make this like xmonad
   (define rbp
     (new horizontal-panel% [parent rp]))
-  (define so:body (new socket% [parent rbp]))  
+  (define so:body (new socket% [parent rbp]))
   (define body-id (current-milliseconds))
   (uzbl-attach! body-id so:body)
 
@@ -226,73 +235,81 @@
   ;; xxx make an api to tell this program what to do (send commands to
   ;; certain windows and change the layout)
 
+  (define execute-command
+    (match-lambda
+     [c
+      (async-channel-put 
+       event-sink 
+       (event:rune:status
+        (format "Command not understood: ~a"
+                c)))]))
+
   ;; xxx move some of this to another program [basically, after
   ;; changing the keycodes]
-  (define (handle m)
-    (match m
-      [(event:uzbl name 'FIFO_SET _)
-       (uzbl-listen! name)]
-      ;; I'm 99% sure I don't want to do anything with these
-      [(event:uzbl _
-                   (or 'PTR_MOVE
-                       'MOD_PRESS
-                       'MOD_RELEASE
-                       'KEY_RELEASE)
-                   _)
-       (void)]
-      ;; I'm 70% sure I don't want these
-      [(event:uzbl (or 'bot 'top)
-                   (or 'LOAD_START
-                       'REQUEST_STARTING
-                       'VARIABLE_SET
-                       'LOAD_COMMIT
-                       'TITLE_CHANGED
-                       'LOAD_PROGRESS
-                       'LOAD_FINISH
-                       'SCROLL_HORIZ
-                       'SCROLL_VERT)
-                   _)
-       (void)]
-      [(event:uzbl _ 'KEY_PRESS (regexp #rx"^'(.*?)' (.*?)$"
-                                        (list _ mods code)))
-       (local-require ffi/unsafe
-                      mred/private/wx/gtk/utils
-                      mred/private/wx/gtk/keycode)
-       (define-gdk gdk_keyval_from_name (_fun _string -> _uint))
+  (define transform-event
+    (match-lambda
+     [(event:uzbl name 'FIFO_SET _)
+      (uzbl-listen! name)
+      #f]
+     ;; I'm 99% sure I don't want to do anything with these
+     [(event:uzbl _
+                  (or 'PTR_MOVE
+                      'MOD_PRESS
+                      'MOD_RELEASE
+                      'KEY_RELEASE)
+                  _)
+      #f]
+     [(event:uzbl _ 'KEY_PRESS (regexp #rx"^'(.*?)' (.*?)$"
+                                       (list _ mods code)))
+      (local-require ffi/unsafe
+                     mred/private/wx/gtk/utils
+                     mred/private/wx/gtk/keycode)
+      (define-gdk gdk_keyval_from_name (_fun _string -> _uint))
 
-       (define key-code
-         (cond
-           [(char=? #\' (string-ref code 0))
-            (cond
-              [(char=? #\\ (string-ref code 1))
-               #\']
-              [else
-               (string-ref code 1)])]
-           [(string=? "space" code)
-            #\space]
-           [else
-            (map-key-code (gdk_keyval_from_name code))]))
+      (define key-code
+        (cond
+          [(char=? #\' (string-ref code 0))
+           (cond
+             [(char=? #\\ (string-ref code 1))
+              #\']
+             [else
+              (string-ref code 1)])]
+          [(string=? "space" code)
+           #\space]
+          [else
+           (map-key-code (gdk_keyval_from_name code))]))
 
-       (handle
-        (event:rune-key
-         (key-event->rune-key
-          (new key-event%
-               ;; NOTE: UZBL ignores META_MASK so alt-down can never appear
-               [key-code (or key-code #\nul)]
-               [shift-down (regexp-match #rx"Shift" mods)]
-               [control-down (regexp-match #rx"Ctrl" mods)]
-               [meta-down (regexp-match #rx"Mod1" mods)]
-               [mod3-down (regexp-match #rx"Mod3" mods)]
-               [mod4-down (regexp-match #rx"Mod4" mods)]
-               [mod5-down (regexp-match #rx"Mod5" mods)]))))]
-      [_
-       (printf "~v\n" m)]))
+      (event:rune:key
+       (key-event->rune-key
+        (new key-event%
+             ;; NOTE: UZBL ignores META_MASK so alt-down can never appear
+             [key-code (or key-code #\nul)]
+             [shift-down (regexp-match #rx"Shift" mods)]
+             [control-down (regexp-match #rx"Ctrl" mods)]
+             [meta-down (regexp-match #rx"Mod1" mods)]
+             [mod3-down (regexp-match #rx"Mod3" mods)]
+             [mod4-down (regexp-match #rx"Mod4" mods)]
+             [mod5-down (regexp-match #rx"Mod5" mods)])))]
+     [e
+      e]))
 
-  (thread
-   (λ ()
-     (let loop ()
-       (define m (async-channel-get event-sink))
-       (handle m)
-       (loop))))
+  (define api-t
+    (thread
+     (λ ()
+       (let loop ()
+         (sync
+          (handle-evt
+           command-source
+           (λ (c)
+             (execute-command c)))
+          (handle-evt
+           event-sink
+           (λ (e)
+             (define ep (transform-event e))
+             (when ep
+               (write ep)
+               (newline)
+               (flush-output)))))
+         (loop)))))
 
   (void))
