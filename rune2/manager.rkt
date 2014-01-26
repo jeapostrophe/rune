@@ -1,7 +1,8 @@
 #lang racket/base
 (require racket/runtime-path
          racket/match
-         rune2/common)
+         rune2/common
+         rune/lib/buffer)
 
 (define RACKET-PATH (find-executable-path "racket"))
 (define-runtime-path gui-path "gui.rkt")
@@ -17,27 +18,25 @@
     (newline stdin)
     (flush-output stdin))
   (define (uzbl-send! name cmd)
-    (send! (command:uzbl:send name cmd)))
+    (send! (command:uzbl:send name cmd)))  
 
-  (define-runtime-path here ".")
-  (define (here-uri h)
-    (format "uri ~a"
-            (path->string
-             (build-path here h))))
-
-  (uzbl-send! 'top (here-uri "top.html"))
+  (uzbl-send! 'top "set inject_html = TOP")
   (send! (command:uzbl:attach 'body))
   (uzbl-send! 'body "uri http://google.com")
-  (uzbl-send! 'bot (here-uri "bot.html"))
+  (uzbl-send! 'bot "set inject_html = BOT")
 
-  (thread
-   (λ ()
-     (for ([i (in-range 100)])
-       (uzbl-send! 'bot (format "set inject_html = <strong>~a</strong>" i))
-       (sleep 1))))
+  (struct state ())
 
-  (define process
-    (match-lambda
+  ;; xxx I want two modes: send every command to the active
+  ;; application or do stuff in the minibuffer on the bottom
+
+  ;; xxx I want the mini-buffer to be like a little edit, using the
+  ;; same structures, etc as the editor program
+
+  ;; xxx I want the mini-buffer to keep track of/have a unified
+  ;; history/completion system
+  (define (process b e)
+    (match e
      ;; I'm 70% sure I don't want these
      [(event:uzbl (or 'bot 'top)
                   (or 'LOAD_START
@@ -50,13 +49,17 @@
                       'SCROLL_HORIZ
                       'SCROLL_VERT)
                   _)
-      (void)]
+      b]
+     [(event:rune:key (? char? c))
+      (define bp (buffer-insert-char b 0 0 c))
+      (uzbl-send! 'bot (format "set inject_html = ~a" (buffer->string bp)))
+      bp]
      [e
       (write e)
-      (newline)]))
+      (newline)
+      b]))
 
-  (let reading ()
+  (let reading ([b (string->buffer "")])
     (define e (read stdout))
     (unless (eof-object? e)
-      (process e)
-      (reading))))
+      (reading (process b e)))))
