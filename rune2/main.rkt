@@ -10,7 +10,7 @@
          racket/list
          racket/async-channel
          racket/runtime-path
-         rune2/event)
+         rune2/common)
 
 (define UZBL-PATH "/usr/bin/uzbl-core")
 (define-runtime-path default-config "uzbl.config")
