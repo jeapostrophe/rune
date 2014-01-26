@@ -5,7 +5,6 @@
          racket/format
          racket/file
          rune2/socket
-         unstable/socket
          racket/match
          racket/port
          racket/list
@@ -81,19 +80,19 @@
     (close-output-port stdin)
 
     (async-channel-put new-from-ch stdout)
-
-    (define uzbl-fifo-pth (build-path SOCKET-DIR (~a "uzbl_fifo_" name)))
-    (define communicator
+    
+    (define waiter-t
       (thread
        (λ ()
+         (define uzbl-fifo-pth
+           (build-path SOCKET-DIR (~a "uzbl_fifo_" name)))
          ;; xxx there should be a better way
          (let wait ()
            (unless (file-exists? uzbl-fifo-pth)
              (sleep)
              (wait)))
-
-         (define to-uzbl (open-output-file uzbl-fifo-pth #:exists 'append))
-
+         (define to-uzbl
+           (open-output-file uzbl-fifo-pth #:exists 'append))
          (async-channel-put new-to-ch (cons name to-uzbl)))))
 
     (define (command cmd)
