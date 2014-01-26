@@ -61,20 +61,6 @@
          (string->symbol (format "~a~a" mods kc-e))
          kc-e)))
 
-(define (filesystem-exists-evt p)
-  (define signal (make-semaphore))
-  ;; xxx there should be a better way
-  (thread
-   (λ ()
-     (let wait ()
-       (cond
-         [(file-exists? p)
-          (semaphore-post signal)]
-         [else
-          (sleep)
-          (wait)]))))
-  signal)
-
 (define uzbl-manager%
   (class object%
     (init-field event-sink)
@@ -147,22 +133,18 @@
 
       (async-channel-put new-from-ch stdout)
 
-      ;; xxx I could wait for the FIFO_SET event
-      (define waiter-t
-        (thread
-         (λ ()
-           (define uzbl-fifo-pth
-             (build-path SOCKET-DIR (~a "uzbl_fifo_" name)))
-           (sync (filesystem-exists-evt uzbl-fifo-pth))
-           (define to-uzbl
-             (open-output-file uzbl-fifo-pth #:exists 'append))
-           (async-channel-put new-to-ch (cons name to-uzbl)))))
-
       ;; xxx for some reason the config file for this gets ignored
       (command name "set show_status = off"))
 
     (define/public (command name cmd)
       (async-channel-put to-ch (cons name cmd)))
+
+    (define/public (listen name)
+      (define uzbl-fifo-pth
+        (build-path SOCKET-DIR (~a "uzbl_fifo_" name)))
+      (define to-uzbl
+        (open-output-file uzbl-fifo-pth #:exists 'append))
+      (async-channel-put new-to-ch (cons name to-uzbl)))
 
     (super-new)))
 
@@ -192,6 +174,8 @@
     (new uzbl-manager% [event-sink event-sink]))
   (define (uzbl-attach! name so)
     (send uzbl-manager attach name so))
+  (define (uzbl-listen! name)
+    (send uzbl-manager listen name))
   (define (uzbl-cmd! name cmd)
     (send uzbl-manager command name cmd))
 
@@ -254,6 +238,8 @@
   ;; changing the keycodes]
   (define (handle m)
     (match m
+      [(event:uzbl name 'FIFO_SET _)
+       (uzbl-listen! name)]
       ;; I'm 99% sure I don't want to do anything with these
       [(event:uzbl _
                    (or 'PTR_MOVE
