@@ -32,8 +32,16 @@
             (handle-evt
              (read-line-evt from)
              (λ (l)
-               ;; xxx should analyze this
-               (displayln l)
+               (match-define
+                (regexp #rx"^EVENT \\[([0-9A-Za-z]+)\\] ([^ ]+) ?(.*)$"
+                        (list _ instance name details))
+                l)
+               (match name
+                 ["PTR_MOVE"
+                  (void)]
+                 [else
+                  (printf "~a: ~a\n" name details)])
+
                (receiving froms)))))))))
 
   (define new-to-ch (make-async-channel))
@@ -49,7 +57,6 @@
               (define to-uzbl (hash-ref name->to name #f))
               (cond
                 [to-uzbl
-                 (printf "CMD: ~a\n" cmd)
                  (displayln cmd to-uzbl)
                  (flush-output to-uzbl)
                  #f]
@@ -80,7 +87,7 @@
     (close-output-port stdin)
 
     (async-channel-put new-from-ch stdout)
-    
+
     (define waiter-t
       (thread
        (λ ()
@@ -106,15 +113,27 @@
   attach-uzbl)
 
 ;; xxx experiment with mplayer:
-;; http://cpansearch.perl.org/src/GBROWN/Gtk2-Ex-MPlayerEmbed-0.02/lib/Gtk2/Ex/MPlayerEmbed.pm
+;; http://cpansearch.perl.org/src/GBROWN/Gtk2-Ex-MPlayerEmbed-0.02/lib/Gtk2/Ex/MPlayerErmbed.pm
+
+(define rune-canvas%
+  (class canvas%
+    (init-field on-char-f)
+
+    (define/override (on-char ke)
+      (on-char-f ke)
+      (super on-char ke))
+
+    (super-new)))
 
 (module+ main
   (when (directory-exists? SOCKET-DIR)
     (delete-directory/files SOCKET-DIR))
   (make-directory SOCKET-DIR)
 
-  (define rf (new frame% [label "Rune"]))
-  (define rp (new vertical-panel% [parent rf]))
+  (define rf
+    (new frame% [label "Rune"]))
+  (define rp
+    (new vertical-panel% [parent rf]))
 
   (define uzbl-manager (make-uzbl-manager))
 
@@ -129,7 +148,8 @@
     (uzbl-manager 'top so:top-status))
 
   ;; xxx make this like xmonad
-  (define rbp (new horizontal-panel% [parent rp]))
+  (define rbp 
+    (new horizontal-panel% [parent rp]))
   (define so:body (new socket% [parent rbp]))
   (define uz:body
     (uzbl-manager (current-milliseconds) so:body))
@@ -152,4 +172,20 @@
   (uz:body "uri http://google.com")
   (uz:bot-status (here-uri "bot.html"))
 
-  (send rf show #t))
+  (thread
+   (λ ()
+     (for ([i (in-range 100)])
+       (uz:bot-status (format "set inject_html = ~a" i))
+       (sleep 1))))
+
+  (define cv
+    (new rune-canvas% [parent so:body]
+         [on-char-f
+          (λ (ke)
+            ;; xxx convert to event from uzbl and send to same place
+            (displayln ke))]))
+
+  ;; xxx analyze events and write a basic key/event forwarding system
+
+  (send rf show #t)
+  (send cv focus))

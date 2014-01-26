@@ -1,3 +1,15 @@
+* New Idea
+** caching in uzbl
+   Do I need polipo?
+** look at LightTable for CSS tricks
+** look at wmctrl for interacting with WM
+** look at awesome for more configurable/different WM
+** look through ergoemacs for features
+   http://ergoemacs.org/emacs/emacs.html
+** look at good unicode fonts and substitution
+   http://ergoemacs.org/emacs/emacs_unicode_fonts.html
+** look at how sam does interacting with external stuff
+   http://doc.cat-v.org/bell_labs/sam_lang_tutorial/sam_tut.pdf
 * Rune
 
 Test λ
@@ -79,6 +91,7 @@ Commands could search their body for overlays of a specific type
  mode-line) mini-buffer)]
 
  A focus is a zipper of a layout.
+
 * Tasks
 ** DONE implement gap buffer
    CLOSED: [2013-06-07 Fri 16:17]
