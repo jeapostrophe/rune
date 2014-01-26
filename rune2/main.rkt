@@ -9,21 +9,13 @@
          racket/port
          racket/list
          racket/async-channel
-         racket/runtime-path)
+         racket/runtime-path
+         rune2/event)
 
 (define UZBL-PATH "/usr/bin/uzbl-core")
 (define-runtime-path default-config "uzbl.config")
 
 (define SOCKET-DIR "/tmp/rune")
-
-(struct event ()
-        #:prefab)
-(struct event:uzbl event
-        (instance name details)
-        #:prefab)
-(struct event:rune-key event
-        (sym)
-        #:prefab)
 
 (define (key-event->rune-key ke)
   (define kc
