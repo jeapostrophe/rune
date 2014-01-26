@@ -16,12 +16,50 @@
 
 (define SOCKET-DIR "/tmp/rune")
 
-(struct event () #:prefab)
+(struct event ()
+        #:prefab)
 (struct event:uzbl event
-        (instance name details) #:prefab)
-(struct event:gui-keyevent event
-        (shift? control? meta? alt? caps? release?
-                key-code) #:prefab)
+        (instance name details)
+        #:prefab)
+(struct event:rune-key event
+        (sym)
+        #:prefab)
+
+(define (key-event->rune-key ke)
+  (define kc
+    (match (send ke get-key-code)
+      [#\nul #f]
+      [#\rubout 'delete]
+      [#\backspace 'backspace]
+      [#\space 'space]
+      [#\return 'return]
+      [#\tab 'tab]
+      [(? char? c) c]
+      ['release #f]
+      [(? symbol? s) s]))
+  (define-syntax-rule (m b c)
+    (if (send ke b) (format "~a-" c) ""))
+  (define mods
+    (string-append
+     (m   get-shift-down "S")
+     (m get-control-down "C")
+     (m    get-meta-down "M")
+     (m    get-mod3-down "M3")
+     (m    get-mod4-down "M4")
+     (m    get-mod5-down "M5")
+     (m     get-alt-down "A")))
+  (define mods?
+    (and (not (string=? "" mods))
+         (not (and (string=? "S-" mods)
+                   (char? kc)))))
+  (define kc-e
+    (if (symbol? kc)
+      (string->symbol (format "<~a>" kc))
+      kc))
+  (and kc-e
+       (if mods?
+         (string->symbol (format "~a~a" mods kc-e))
+         kc-e)))
 
 (define (filesystem-exists-evt p)
   (define signal (make-semaphore))
@@ -153,6 +191,7 @@
   ;; xxx make everything but body as tight in height as possible [by
   ;; putting it in a div and then reading its height via JS]
   ;; http://www.uzbl.org/wiki/fit-window
+  ;; maybe scroll_vert event would help?
   (define so:top-status
     (new socket% [parent rp]
          [min-height 30]
@@ -168,21 +207,9 @@
     (new rune-canvas% [parent so:body]
          [on-char-f
           (λ (ke)
-            (define release?
-              (eq? 'release (send ke get-key-code)))
-            (define e
-              (event:gui-keyevent
-               (send ke get-shift-down)
-               (send ke get-control-down)
-               (send ke get-meta-down)
-               (send ke get-alt-down)
-               (send ke get-caps-down)
-               release?
-               (if release?
-                 (send ke get-key-release-code)
-                 (send ke get-key-code))))
-
-            (async-channel-put event-sink e))]))
+            (define rk (key-event->rune-key ke))
+            (when rk
+              (async-channel-put event-sink (event:rune-key rk))))]))
   (send cv focus)
   (define uz:body
     (uzbl-manager (current-milliseconds) so:body))
@@ -215,13 +242,74 @@
        (uz:bot-status (format "set inject_html = ~a" i))
        (sleep 1))))
 
+  ;; xxx make an api to tell this program what to do (send commands to
+  ;; certain windows and change the layout)
+
+  ;; xxx move some of this to another program [basically, after
+  ;; changing the keycodes]
+  (define (handle m)
+    (match m
+      ;; I'm 99% sure I don't want to do anything with these
+      [(event:uzbl _
+                   (or 'PTR_MOVE
+                       'MOD_PRESS
+                       'MOD_RELEASE
+                       'KEY_RELEASE)
+                   _)
+       (void)]
+      ;; I'm 70% sure I don't want these
+      [(event:uzbl (or 'bot 'top)
+                   (or 'LOAD_START
+                       'REQUEST_STARTING
+                       'VARIABLE_SET
+                       'LOAD_COMMIT
+                       'TITLE_CHANGED
+                       'LOAD_PROGRESS
+                       'LOAD_FINISH
+                       'SCROLL_HORIZ
+                       'SCROLL_VERT)
+                   _)
+       (void)]
+      [(event:uzbl _ 'KEY_PRESS (regexp #rx"^'(.*?)' (.*?)$"
+                                        (list _ mods code)))
+       (local-require ffi/unsafe
+                      mred/private/wx/gtk/utils
+                      mred/private/wx/gtk/keycode)
+       (define-gdk gdk_keyval_from_name (_fun _string -> _uint))
+
+       (define key-code
+         (cond
+           [(char=? #\' (string-ref code 0))
+            (cond
+              [(char=? #\\ (string-ref code 1))
+               #\']
+              [else
+               (string-ref code 1)])]
+           [(string=? "space" code)
+            #\space]
+           [else
+            (map-key-code (gdk_keyval_from_name code))]))
+
+       (handle
+        (event:rune-key
+         (key-event->rune-key
+          (new key-event%
+               ;; NOTE: UZBL ignores META_MASK so alt-down can never appear
+               [key-code (or key-code #\nul)]
+               [shift-down (regexp-match #rx"Shift" mods)]
+               [control-down (regexp-match #rx"Ctrl" mods)]
+               [meta-down (regexp-match #rx"Mod1" mods)]
+               [mod3-down (regexp-match #rx"Mod3" mods)]
+               [mod4-down (regexp-match #rx"Mod4" mods)]
+               [mod5-down (regexp-match #rx"Mod5" mods)]))))]
+      [_
+       (printf "~v\n" m)]))
+
   (thread
    (λ ()
      (let loop ()
        (define m (async-channel-get event-sink))
-       (displayln m)
+       (handle m)
        (loop))))
-
-  ;; xxx analyze events and write a basic key/event forwarding system
 
   (void))
