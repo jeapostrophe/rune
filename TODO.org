@@ -1,4 +1,6 @@
 * New Idea
+** use webkit directly?
+   uzbl is only 5k lines and surf is on 1.4k
 ** caching in uzbl
    Do I need polipo?
 ** look at LightTable for CSS tricks

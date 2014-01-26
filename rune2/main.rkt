@@ -16,7 +16,14 @@
 
 (define SOCKET-DIR "/tmp/rune")
 
-(define (make-uzbl-manager)
+(struct event () #:prefab)
+(struct event:uzbl event
+        (instance name details) #:prefab)
+(struct event:gui-keyevent event
+        (shift? control? meta? alt? caps? release?
+                key-code) #:prefab)
+
+(define (make-uzbl-manager event-sink)
   (define new-from-ch (make-async-channel))
   (define receiver-t
     (thread
@@ -34,14 +41,11 @@
              (λ (l)
                (match-define
                 (regexp #rx"^EVENT \\[([0-9A-Za-z]+)\\] ([^ ]+) ?(.*)$"
-                        (list _ instance name details))
+                        (list _ instance-s name-s details))
                 l)
-               (match name
-                 ["PTR_MOVE"
-                  (void)]
-                 [else
-                  (printf "~a: ~a\n" name details)])
-
+               (define instance (read (open-input-string instance-s)))
+               (define name (string->symbol name-s))
+               (async-channel-put event-sink (event:uzbl instance name details))
                (receiving froms)))))))))
 
   (define new-to-ch (make-async-channel))
@@ -135,7 +139,9 @@
   (define rp
     (new vertical-panel% [parent rf]))
 
-  (define uzbl-manager (make-uzbl-manager))
+  (define event-sink (make-async-channel))
+
+  (define uzbl-manager (make-uzbl-manager event-sink))
 
   ;; xxx make everything but body as tight in height as possible [by
   ;; putting it in a div and then reading its height via JS]
@@ -148,7 +154,7 @@
     (uzbl-manager 'top so:top-status))
 
   ;; xxx make this like xmonad
-  (define rbp 
+  (define rbp
     (new horizontal-panel% [parent rp]))
   (define so:body (new socket% [parent rbp]))
   (define uz:body
@@ -178,12 +184,32 @@
        (uz:bot-status (format "set inject_html = ~a" i))
        (sleep 1))))
 
+  (thread
+   (λ ()
+     (let loop ()
+       (define m (async-channel-get event-sink))
+       (displayln m)
+       (loop))))
+
   (define cv
     (new rune-canvas% [parent so:body]
          [on-char-f
           (λ (ke)
-            ;; xxx convert to event from uzbl and send to same place
-            (displayln ke))]))
+            (define release?
+              (eq? 'release (send ke get-key-code)))
+            (define e
+              (event:gui-keyevent
+               (send ke get-shift-down)
+               (send ke get-control-down)
+               (send ke get-meta-down)
+               (send ke get-alt-down)
+               (send ke get-caps-down)
+               release?
+               (if release?
+                 (send ke get-key-release-code)
+                 (send ke get-key-code))))
+
+            (async-channel-put event-sink e))]))
 
   ;; xxx analyze events and write a basic key/event forwarding system
 
