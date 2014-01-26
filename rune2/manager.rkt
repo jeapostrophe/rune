@@ -98,7 +98,7 @@
        (uzbl-send! 'body (format "uri ~a" history-p))
        (uzbl-send! 'bot (format "set inject_html = ~a" ""))
 
-       (state hp (+ hr 2) (string->buffer "") 0)]
+       (state hp (sub1 (buffer-rows hp)) (string->buffer "") 0)]
       [e
        (write e)
        (newline)
