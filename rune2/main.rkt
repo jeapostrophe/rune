@@ -2,6 +2,7 @@
 (require racket/gui/base
          racket/class
          racket/system
+         racket/format
          racket/file
          rune2/socket
          unstable/socket
@@ -14,16 +15,18 @@
 
 (define SOCKET-DIR "/tmp/rune")
 
-(define (attach-uzbl so)
+(define (attach-uzbl name so)
   (define s-id (send so get-id))
 
   (define-values (sp _o stdin _e)
     (subprocess (current-output-port) #f (current-error-port)
-                UZBL-PATH "-c" default-config "-s" (number->string s-id)))
+                UZBL-PATH
+                "-c" default-config
+                "-n" (~a name)
+                "-s" (number->string s-id)))
   (close-output-port stdin)
 
-  (define pid (subprocess-pid sp))
-  (define uzbl-socket-pth (build-path SOCKET-DIR (format "uzbl_socket_~a" pid)))
+  (define uzbl-socket-pth (build-path SOCKET-DIR (~a "uzbl_socket_" name)))
   (define to-ac (make-async-channel))
   (define communicator
     (thread
@@ -80,20 +83,20 @@
          [min-height 30]
          [stretchable-height #f]))
   (define uz:top-status
-    (attach-uzbl so:top-status))
+    (attach-uzbl 'top so:top-status))
 
   ;; xxx make this like xmonad
   (define rbp (new horizontal-panel% [parent rp]))
   (define so:body (new socket% [parent rbp]))
   (define uz:body
-    (attach-uzbl so:body))
+    (attach-uzbl (current-milliseconds) so:body))
 
   (define so:bot-status
     (new socket% [parent rp]
          [min-height 30]
          [stretchable-height #f]))
   (define uz:bot-status
-    (attach-uzbl so:bot-status))
+    (attach-uzbl 'bot so:bot-status))
 
   (require racket/runtime-path)
   (define-runtime-path here ".")
