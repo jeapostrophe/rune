@@ -144,6 +144,7 @@
 
     (async-channel-put new-from-ch stdout)
 
+    ;; xxx I could wait for the FIFO_SET event
     (define waiter-t
       (thread
        (λ ()
