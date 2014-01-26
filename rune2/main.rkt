@@ -75,95 +75,96 @@
           (wait)]))))
   signal)
 
-(define (make-uzbl-manager event-sink)
-  (define new-from-ch (make-async-channel))
-  (define receiver-t
-    (thread
-     (λ ()
-       (let receiving ([froms empty])
-         (apply
-          sync
-          (handle-evt
-           new-from-ch
-           (λ (from)
-             (receiving (cons from froms))))
-          (for/list ([from (in-list froms)])
-            (handle-evt
-             (read-line-evt from)
-             (λ (l)
-               (match-define
-                (regexp #rx"^EVENT \\[([0-9A-Za-z]+)\\] ([^ ]+) ?(.*)$"
-                        (list _ instance-s name-s details))
-                l)
-               (define instance (read (open-input-string instance-s)))
-               (define name (string->symbol name-s))
-               (async-channel-put event-sink (event:uzbl instance name details))
-               (receiving froms)))))))))
+(define uzbl-manager%
+  (class object%
+    (init-field event-sink)
 
-  (define new-to-ch (make-async-channel))
-  (define to-ch (make-async-channel))
-  (define sender-t
-    (thread
-     (λ ()
-       (let sending ([name->to (hasheq)] [msgs empty])
-         (define msgs-p
-           (filter
-            (match-lambda
-             [(cons name cmd)
-              (define to-uzbl (hash-ref name->to name #f))
-              (cond
-                [to-uzbl
-                 (displayln cmd to-uzbl)
-                 (flush-output to-uzbl)
-                 #f]
-                [else
-                 #t])])
-            msgs))
-         (sync
-          (handle-evt
-           new-to-ch
-           (match-lambda
-            [(cons name to)
-             (sending (hash-set name->to name to) msgs-p)]))
-          (handle-evt
-           to-ch
-           (λ (m)
-             (sending name->to (cons m msgs-p)))))))))
-
-  (define (attach-uzbl name so)
-    (define s-id (send so get-id))
-
-    (define-values (sp stdout stdin _e)
-      (subprocess #f #f (current-error-port)
-                  UZBL-PATH
-                  "-c" default-config
-                  "-n" (~a name)
-                  "-p"
-                  "-s" (number->string s-id)))
-    (close-output-port stdin)
-
-    (async-channel-put new-from-ch stdout)
-
-    ;; xxx I could wait for the FIFO_SET event
-    (define waiter-t
+    (define new-from-ch (make-async-channel))
+    (define receiver-t
       (thread
        (λ ()
-         (define uzbl-fifo-pth
-           (build-path SOCKET-DIR (~a "uzbl_fifo_" name)))
-         (sync (filesystem-exists-evt uzbl-fifo-pth))
-         (define to-uzbl
-           (open-output-file uzbl-fifo-pth #:exists 'append))
-         (async-channel-put new-to-ch (cons name to-uzbl)))))
+         (let receiving ([froms empty])
+           (apply
+            sync
+            (handle-evt
+             new-from-ch
+             (λ (from)
+               (receiving (cons from froms))))
+            (for/list ([from (in-list froms)])
+              (handle-evt
+               (read-line-evt from)
+               (λ (l)
+                 (match-define
+                  (regexp #rx"^EVENT \\[([0-9A-Za-z]+)\\] ([^ ]+) ?(.*)$"
+                          (list _ instance-s name-s details))
+                  l)
+                 (define instance (read (open-input-string instance-s)))
+                 (define name (string->symbol name-s))
+                 (async-channel-put event-sink (event:uzbl instance name details))
+                 (receiving froms)))))))))
 
-    (define (command cmd)
+    (define new-to-ch (make-async-channel))
+    (define to-ch (make-async-channel))
+    (define sender-t
+      (thread
+       (λ ()
+         (let sending ([name->to (hasheq)] [msgs empty])
+           (define msgs-p
+             (filter
+              (match-lambda
+               [(cons name cmd)
+                (define to-uzbl (hash-ref name->to name #f))
+                (cond
+                  [to-uzbl
+                   (displayln cmd to-uzbl)
+                   (flush-output to-uzbl)
+                   #f]
+                  [else
+                   #t])])
+              msgs))
+           (sync
+            (handle-evt
+             new-to-ch
+             (match-lambda
+              [(cons name to)
+               (sending (hash-set name->to name to) msgs-p)]))
+            (handle-evt
+             to-ch
+             (λ (m)
+               (sending name->to (cons m msgs-p)))))))))
+
+    (define/public (attach name so)
+      (define s-id (send so get-id))
+
+      (define-values (sp stdout stdin _e)
+        (subprocess #f #f (current-error-port)
+                    UZBL-PATH
+                    "-c" default-config
+                    "-n" (~a name)
+                    "-p"
+                    "-s" (number->string s-id)))
+      (close-output-port stdin)
+
+      (async-channel-put new-from-ch stdout)
+
+      ;; xxx I could wait for the FIFO_SET event
+      (define waiter-t
+        (thread
+         (λ ()
+           (define uzbl-fifo-pth
+             (build-path SOCKET-DIR (~a "uzbl_fifo_" name)))
+           (sync (filesystem-exists-evt uzbl-fifo-pth))
+           (define to-uzbl
+             (open-output-file uzbl-fifo-pth #:exists 'append))
+           (async-channel-put new-to-ch (cons name to-uzbl)))))
+
+      ;; xxx for some reason the config file for this gets ignored
+      (command name "set show_status = off"))
+
+    (define/public (command name cmd)
       (async-channel-put to-ch (cons name cmd)))
 
-    ;; xxx for some reason the config file for this gets ignored
-    (command "set show_status = off")
-
-    command)
-
-  attach-uzbl)
+    (super-new)))
 
 (define rune-canvas%
   (class canvas%
@@ -187,7 +188,12 @@
 
   (define event-sink (make-async-channel))
 
-  (define uzbl-manager (make-uzbl-manager event-sink))
+  (define uzbl-manager
+    (new uzbl-manager% [event-sink event-sink]))
+  (define (uzbl-attach! name so)
+    (send uzbl-manager attach name so))
+  (define (uzbl-cmd! name cmd)
+    (send uzbl-manager command name cmd))
 
   ;; xxx make everything but body as tight in height as possible [by
   ;; putting it in a div and then reading its height via JS]
@@ -197,8 +203,7 @@
     (new socket% [parent rp]
          [min-height 30]
          [stretchable-height #f]))
-  (define uz:top-status
-    (uzbl-manager 'top so:top-status))
+  (uzbl-attach! 'top so:top-status)
 
   ;; xxx make this like xmonad
   (define rbp
@@ -212,15 +217,14 @@
             (when rk
               (async-channel-put event-sink (event:rune-key rk))))]))
   (send cv focus)
-  (define uz:body
-    (uzbl-manager (current-milliseconds) so:body))
+  (define body-id (current-milliseconds))
+  (uzbl-attach! body-id so:body)
 
   (define so:bot-status
     (new socket% [parent rp]
          [min-height 30]
          [stretchable-height #f]))
-  (define uz:bot-status
-    (uzbl-manager 'bot so:bot-status))
+  (uzbl-attach! 'bot so:bot-status)
 
   (send rf show #t)
 
@@ -233,14 +237,14 @@
             (path->string
              (build-path here h))))
 
-  (uz:top-status (here-uri "top.html"))
-  (uz:body "uri http://google.com")
-  (uz:bot-status (here-uri "bot.html"))
+  (uzbl-cmd! 'top (here-uri "top.html"))
+  (uzbl-cmd! body-id "uri http://google.com")
+  (uzbl-cmd! 'bot (here-uri "bot.html"))
 
   (thread
    (λ ()
      (for ([i (in-range 100)])
-       (uz:bot-status (format "set inject_html = ~a" i))
+       (uzbl-cmd! 'bot (format "set inject_html = ~a" i))
        (sleep 1))))
 
   ;; xxx make an api to tell this program what to do (send commands to
