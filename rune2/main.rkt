@@ -2,6 +2,7 @@
 (require racket/gui/base
          racket/class
          racket/system
+         racket/file
          rune2/socket
          unstable/socket
          racket/port
@@ -66,6 +67,10 @@
 ;; http://cpansearch.perl.org/src/GBROWN/Gtk2-Ex-MPlayerEmbed-0.02/lib/Gtk2/Ex/MPlayerEmbed.pm
 
 (module+ main
+  (when (directory-exists? SOCKET-DIR)
+    (delete-directory/files SOCKET-DIR))
+  (make-directory SOCKET-DIR)
+
   (define rf (new frame% [label "Rune"]))
   (define rp (new vertical-panel% [parent rf]))
 
