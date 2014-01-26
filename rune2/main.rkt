@@ -71,28 +71,29 @@
   (define (attach-uzbl name so)
     (define s-id (send so get-id))
 
-    (define-values (sp _o stdin _e)
-      (subprocess (current-output-port) #f (current-error-port)
+    (define-values (sp stdout stdin _e)
+      (subprocess #f #f (current-error-port)
                   UZBL-PATH
                   "-c" default-config
                   "-n" (~a name)
+                  "-p"
                   "-s" (number->string s-id)))
     (close-output-port stdin)
 
-    (define uzbl-socket-pth (build-path SOCKET-DIR (~a "uzbl_socket_" name)))
+    (async-channel-put new-from-ch stdout)
+
+    (define uzbl-fifo-pth (build-path SOCKET-DIR (~a "uzbl_fifo_" name)))
     (define communicator
       (thread
        (λ ()
          ;; xxx there should be a better way
          (let wait ()
-           (unless (file-exists? uzbl-socket-pth)
+           (unless (file-exists? uzbl-fifo-pth)
              (sleep)
              (wait)))
 
-         (define-values (from-uzbl to-uzbl)
-           (unix-socket-connect uzbl-socket-pth))
+         (define to-uzbl (open-output-file uzbl-fifo-pth #:exists 'append))
 
-         (async-channel-put new-from-ch from-uzbl)
          (async-channel-put new-to-ch (cons name to-uzbl)))))
 
     (define (command cmd)
