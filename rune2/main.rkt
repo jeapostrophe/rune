@@ -23,6 +23,20 @@
         (shift? control? meta? alt? caps? release?
                 key-code) #:prefab)
 
+(define (filesystem-exists-evt p)
+  (define signal (make-semaphore))
+  ;; xxx there should be a better way
+  (thread
+   (λ ()
+     (let wait ()
+       (cond
+         [(file-exists? p)
+          (semaphore-post signal)]
+         [else
+          (sleep)
+          (wait)]))))
+  signal)
+
 (define (make-uzbl-manager event-sink)
   (define new-from-ch (make-async-channel))
   (define receiver-t
@@ -97,11 +111,7 @@
        (λ ()
          (define uzbl-fifo-pth
            (build-path SOCKET-DIR (~a "uzbl_fifo_" name)))
-         ;; xxx there should be a better way
-         (let wait ()
-           (unless (file-exists? uzbl-fifo-pth)
-             (sleep)
-             (wait)))
+         (sync (filesystem-exists-evt uzbl-fifo-pth))
          (define to-uzbl
            (open-output-file uzbl-fifo-pth #:exists 'append))
          (async-channel-put new-to-ch (cons name to-uzbl)))))
@@ -115,9 +125,6 @@
     command)
 
   attach-uzbl)
-
-;; xxx experiment with mplayer:
-;; http://cpansearch.perl.org/src/GBROWN/Gtk2-Ex-MPlayerEmbed-0.02/lib/Gtk2/Ex/MPlayerErmbed.pm
 
 (define rune-canvas%
   (class canvas%

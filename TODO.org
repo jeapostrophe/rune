@@ -1,4 +1,6 @@
 * New Idea
+** experiment with mplayer slave
+   http://cpansearch.perl.org/src/GBROWN/Gtk2-Ex-MPlayerEmbed-0.02/lib/Gtk2/Ex/MPlayerErmbed.pm
 ** use webkit directly?
    uzbl is only 5k lines and surf is on 1.4k
 ** caching in uzbl
