@@ -165,8 +165,9 @@
      (λ ()
        (let reading ()
          (define c (read))
-         (async-channel-put command-source c)
-         (reading)))))
+         (unless (eof-object? c)
+           (async-channel-put command-source c)
+           (reading))))))
 
   (define event-sink (make-async-channel))
 
@@ -174,8 +175,6 @@
     (new uzbl-manager% [event-sink event-sink]))
   (define (uzbl-attach! name so)
     (send uzbl-manager attach name so))
-  (define (uzbl-listen! name)
-    (send uzbl-manager listen name))
   (define (uzbl-cmd! name cmd)
     (send uzbl-manager command name cmd))
 
@@ -198,12 +197,8 @@
               (async-channel-put event-sink (event:rune:key rk))))]))
   (send cv focus)
 
-  ;; xxx make this like xmonad
   (define rbp
     (new horizontal-panel% [parent rp]))
-  (define so:body (new socket% [parent rbp]))
-  (define body-id (current-milliseconds))
-  (uzbl-attach! body-id so:body)
 
   (define so:bot-status
     (new socket% [parent rp]
@@ -213,43 +208,28 @@
 
   (send rf show #t)
 
-  ;; core setup is over
-
-  (require racket/runtime-path)
-  (define-runtime-path here ".")
-  (define (here-uri h)
-    (format "uri ~a"
-            (path->string
-             (build-path here h))))
-
-  (uzbl-cmd! 'top (here-uri "top.html"))
-  (uzbl-cmd! body-id "uri http://google.com")
-  (uzbl-cmd! 'bot (here-uri "bot.html"))
-
-  (thread
-   (λ ()
-     (for ([i (in-range 100)])
-       (uzbl-cmd! 'bot (format "set inject_html = <strong>~a</strong>" i))
-       (sleep 1))))
-
-  ;; xxx make an api to tell this program what to do (send commands to
-  ;; certain windows and change the layout)
-
   (define execute-command
     (match-lambda
+     [(command:uzbl:send name cmd)
+      (uzbl-cmd! name cmd)]
+     [(command:uzbl:attach name)
+      (define so:new (new socket% [parent rbp]))
+      (uzbl-attach! name so:new)]
+     ;; xxx close a uzbl
+     ;; xxx control layout
+     [(command:exit)
+      (exit 0)]
      [c
-      (async-channel-put 
-       event-sink 
+      (async-channel-put
+       event-sink
        (event:rune:status
         (format "Command not understood: ~a"
                 c)))]))
 
-  ;; xxx move some of this to another program [basically, after
-  ;; changing the keycodes]
   (define transform-event
     (match-lambda
      [(event:uzbl name 'FIFO_SET _)
-      (uzbl-listen! name)
+      (send uzbl-manager listen name)
       #f]
      ;; I'm 99% sure I don't want to do anything with these
      [(event:uzbl _
