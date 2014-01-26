@@ -86,12 +86,7 @@
   (define rbp (new horizontal-panel% [parent rp]))
   (define uz:body (new uzbl% [parent rbp]))
 
-  ;; xxx combine these into one?
   (define uz:bot-status
-    (new uzbl% [parent rp]
-         [min-height 30]
-         [stretchable-height #f]))
-  (define uz:cmd
     (new uzbl% [parent rp]
          [min-height 30]
          [stretchable-height #f]))
@@ -106,6 +101,5 @@
   (send uz:top-status command (here-uri "top.html"))
   (send uz:body command "uri http://google.com")
   (send uz:bot-status command (here-uri "bot.html"))
-  (send uz:cmd command (here-uri "cmd.html"))
 
   (send rf show #t))
