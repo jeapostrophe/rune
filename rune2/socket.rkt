@@ -18,22 +18,23 @@
 (define-gtk gtk_socket_steal (_fun _GtkWidget _int -> _void))
 (define-gtk gtk_socket_get_id (_fun _GtkWidget -> _int))
 
-(define-gtk gtk_widget_size_allocate 
+(define-gtk gtk_widget_size_allocate
   (_fun _GtkWidget _GtkAllocation-pointer -> _void))
 
 (define socket%
   (class gui:panel%
-    (super-new)
-
-    (define gtk (as-gtk-allocation (gtk_socket_new)))
-    (gtk_widget_show gtk)
-    (gtk_container_add (send this get-client-handle) gtk)
-
     (define filled? #f)
     (define (protect)
       (when filled?
         (error 'socket% "Can only be filled once."))
       (set! filled? #t))
+
+    (define (socket-set-size w h)
+      (define child-gtk gtk)
+      (define x 0)
+      (define y 0)
+      (gtk_widget_set_size_request child-gtk w h)
+      (gtk_widget_size_allocate child-gtk (make-GtkAllocation x y w h)))
 
     (define/public (get-id)
       (protect)
@@ -51,9 +52,8 @@
       (socket-set-size w h)
       (super on-size w h))
 
-    (define (socket-set-size w h)
-      (define child-gtk gtk)
-      (define x 0)
-      (define y 0)
-      (gtk_widget_set_size_request child-gtk w h)
-      (gtk_widget_size_allocate child-gtk (make-GtkAllocation x y w h)))))
+    (super-new)
+
+    (define gtk (as-gtk-allocation (gtk_socket_new)))
+    (gtk_widget_show gtk)
+    (gtk_container_add (send this get-client-handle) gtk)))
