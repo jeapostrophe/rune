@@ -7,6 +7,7 @@
          rune2/socket
          unstable/socket
          racket/port
+         racket/list
          racket/async-channel
          racket/runtime-path)
 
@@ -16,6 +17,25 @@
 (define SOCKET-DIR "/tmp/rune")
 
 (define (make-uzbl-manager)
+  (define new-from-ch (make-async-channel))
+  (define receiver-t
+    (thread
+     (λ ()
+       (let receiving ([froms empty])
+         (apply
+          sync
+          (handle-evt
+           new-from-ch
+           (λ (from)
+             (receiving (cons from froms))))
+          (for/list ([from (in-list froms)])
+            (handle-evt
+             (read-line-evt from)
+             (λ (l)
+               ;; xxx should analyze this
+               (displayln l)
+               (receiving froms)))))))))
+
   (define (attach-uzbl name so)
     (define s-id (send so get-id))
 
@@ -41,14 +61,7 @@
          (define-values (from-uzbl to-uzbl)
            (unix-socket-connect uzbl-socket-pth))
 
-         (define receiver
-           (thread
-            (λ ()
-              (let receiving ()
-                (define l (read-line from-uzbl))
-                ;;; xxx should analyze these
-                (displayln l)
-                (receiving)))))
+         (async-channel-put new-from-ch from-uzbl)
 
          (let sending ()
            (define cmd (async-channel-get to-ac))
