@@ -91,7 +91,7 @@
                     [href ,(path->rune-file-url rune-file.css)]))
              (script ([src "//code.jquery.com/jquery-1.10.1.min.js"]) "")
              (script ([src ,(path->rune-file-url rune-file.js)]) ""))
-            (body
+            (body ([class "base00 base3_bg"])
              (div ([id "top"] [class "file"])
                   ,@(for/list ([r (in-list ls)]
                                [i (in-naturals)])

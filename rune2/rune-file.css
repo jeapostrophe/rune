@@ -1,23 +1,40 @@
-/*
-  http://ethanschoonover.com/solarized
+/* solarized */
 
-$base03:    #002b36;
-$base02:    #073642;
-$base01:    #586e75;
-$base00:    #657b83;
-$base0:     #839496;
-$base1:     #93a1a1;
-$base2:     #eee8d5;
-$base3:     #fdf6e3;
-$yellow:    #b58900;
-$orange:    #cb4b16;
-$red:       #dc322f;
-$magenta:   #d33682;
-$violet:    #6c71c4;
-$blue:      #268bd2;
-$cyan:      #2aa198;
-$green:     #859900;
-*/
+ .base03 { color: #002b36; }
+ .base02 { color: #073642; }
+ .base01 { color: #586e75; }
+ .base00 { color: #657b83; }
+  .base0 { color: #839496; }
+  .base1 { color: #93a1a1; }
+  .base2 { color: #eee8d5; }
+  .base3 { color: #fdf6e3; }
+ .yellow { color: #b58900; }
+ .orange { color: #cb4b16; }
+    .red { color: #dc322f; }
+.magenta { color: #d33682; }
+ .violet { color: #6c71c4; }
+   .blue { color: #268bd2; }
+   .cyan { color: #2aa198; }
+  .green { color: #859900; }
+
+ .base03_bg { background-color: #002b36; }
+ .base02_bg { background-color: #073642; }
+ .base01_bg { background-color: #586e75; }
+ .base00_bg { background-color: #657b83; }
+  .base0_bg { background-color: #839496; }
+  .base1_bg { background-color: #93a1a1; }
+  .base2_bg { background-color: #eee8d5; }
+  .base3_bg { background-color: #fdf6e3; }
+ .yellow_bg { background-color: #b58900; }
+ .orange_bg { background-color: #cb4b16; }
+    .red_bg { background-color: #dc322f; }
+.magenta_bg { background-color: #d33682; }
+ .violet_bg { background-color: #6c71c4; }
+   .blue_bg { background-color: #268bd2; }
+   .cyan_bg { background-color: #2aa198; }
+  .green_bg { background-color: #859900; }
+
+/* other */
 
 html {
     margin: 0;
@@ -26,25 +43,10 @@ html {
     font-size: 10pt;
     vertical-align: baseline;
 
-    font-family: "DejaVu Sans Mono", "DejaVu", monospace;
-    /* xxx better way of managing color */
-    color: #657b83;
-    background-color: #fdf6e3;
+    font-family: "DejaVu Sans Mono", monospace;
 }
 
 span.row {
     display: block;
     white-space: pre;
-}
-
-.green {
-    color: #859900;
-}
-
-.red {
-    color: #dc322f;
-}
-
-.cyan {
-    color: #2aa198;
 }
