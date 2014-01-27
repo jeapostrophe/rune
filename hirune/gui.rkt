@@ -4,19 +4,19 @@
          racket/system
          racket/format
          racket/file
-         rune2/socket
+         hirune/socket
          racket/match
          racket/port
          racket/list
          racket/async-channel
          racket/runtime-path
-         rune2/common)
+         hirune/common)
 
 (define UZBL-PATH "/usr/bin/uzbl-core")
 (define-runtime-path default-config "uzbl.config")
-(define SOCKET-DIR "/tmp/rune")
+(define SOCKET-DIR "/tmp/hirune")
 
-(define (key-event->rune-key ke)
+(define (key-event->hirune-key ke)
   (define kc
     (match (send ke get-key-code)
       [#\nul #f]
@@ -139,7 +139,7 @@
 
     (super-new)))
 
-(define rune-canvas%
+(define hirune-canvas%
   (class canvas%
     (init-field on-char-f)
 
@@ -155,7 +155,7 @@
   (make-directory SOCKET-DIR)
 
   (define rf
-    (new frame% [label "Rune"]))
+    (new frame% [label "Hirune"]))
   (define rp
     (new vertical-panel% [parent rf]))
 
@@ -189,12 +189,12 @@
   (uzbl-attach! 'top so:top-status)
 
   (define cv
-    (new rune-canvas% [parent so:top-status]
+    (new hirune-canvas% [parent so:top-status]
          [on-char-f
           (λ (ke)
-            (define rk (key-event->rune-key ke))
+            (define rk (key-event->hirune-key ke))
             (when rk
-              (async-channel-put event-sink (event:rune:key rk))))]))
+              (async-channel-put event-sink (event:hirune:key rk))))]))
   (send cv focus)
 
   (define rbp
@@ -222,7 +222,7 @@
      [c
       (async-channel-put
        event-sink
-       (event:rune:status
+       (event:hirune:status
         (format "Command not understood: ~a"
                 c)))]))
 
@@ -259,8 +259,8 @@
           [else
            (map-key-code (gdk_keyval_from_name code))]))
 
-      (event:rune:key
-       (key-event->rune-key
+      (event:hirune:key
+       (key-event->hirune-key
         (new key-event%
              ;; NOTE: UZBL ignores META_MASK so alt-down can never appear
              [key-code (or key-code #\nul)]

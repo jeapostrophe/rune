@@ -9,12 +9,12 @@
 (struct event:uzbl event
         (instance name details)
         #:prefab)
-(struct event:rune event ()
+(struct event:hirune event ()
         #:prefab)
-(struct event:rune:key event:rune
+(struct event:hirune:key event:hirune
         (c)
         #:prefab)
-(struct event:rune:status event:rune
+(struct event:hirune:status event:hirune
         (m)
         #:prefab)
 
@@ -39,10 +39,10 @@
           ([instance name/c]
            [name symbol?]
            [details string?])]
-  [struct event:rune ()]
-  [struct event:rune:key
+  [struct event:hirune ()]
+  [struct event:hirune:key
           ([c (or/c char? symbol?)])]
-  [struct event:rune:status
+  [struct event:hirune:status
           ([m string?])]
   [struct command ()]
   [struct command:exit ()]

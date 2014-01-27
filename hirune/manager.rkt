@@ -5,15 +5,15 @@
          racket/file
          racket/string
          xml
-         rune2/common
+         hirune/common
          racket/class
          rune/lib/buffer
          (for-syntax racket/base))
 
 (define RACKET-PATH (find-executable-path "racket"))
 (define-runtime-path gui-path "gui.rkt")
-(define-runtime-path rune-file.css "rune-file.css")
-(define-runtime-path rune-file.js "rune-file.js")
+(define-runtime-path hirune.css "hirune.css")
+(define-runtime-path hirune.js "hirune.js")
 (define-runtime-path domo.jpg "domo.jpg")
 
 (define-match-expander bind
@@ -42,7 +42,7 @@
   (define (uzbl-send! name cmd)
     (send! (command:uzbl:send name cmd)))
 
-  (define rune-file-port
+  (define hirune-file-port
     (let ()
       (local-require web-server/web-server
                      web-server/http
@@ -60,20 +60,20 @@
        #:port 0)
       (async-channel-get confirm-ch)))
 
-  (define (path->rune-file-url p)
-    (format "http://localhost:~a~a" rune-file-port p))
+  (define (path->hirune-file-url p)
+    (format "http://localhost:~a~a" hirune-file-port p))
 
   ;; xxx delete old files
 
-  (define rune-file%
+  (define hirune-file%
     (class object%
       (define p #f)
 
       (define (really-uri name after)
         (unless p
-          (error 'rune-file% "Initialize first!"))
+          (error 'hirune-file% "Initialize first!"))
         (uzbl-send! name (format "set uri = ~a#~a"
-                                 (path->rune-file-url p)
+                                 (path->hirune-file-url p)
                                  after)))
       (define/public (uri name)
         (really-uri name ""))
@@ -88,9 +88,9 @@
             (head
              (link ([rel "stylesheet"]
                     [type "text/css"]
-                    [href ,(path->rune-file-url rune-file.css)]))
+                    [href ,(path->hirune-file-url hirune.css)]))
              (script ([src "//code.jquery.com/jquery-1.10.1.min.js"]) "")
-             (script ([src ,(path->rune-file-url rune-file.js)]) ""))
+             (script ([src ,(path->hirune-file-url hirune.js)]) ""))
             (body ([class "base00 base3_bg"])
              (div ([id "top"] [class "file"])
                   ,@(for/list ([r (in-list ls)]
@@ -98,7 +98,7 @@
                       ;; xxx show the cursor
                       `(span ([class "row"] [id ,(format "row~a" i)])
                              ,r))))))
-        (define np (make-temporary-file "rune-~a.html"))
+        (define np (make-temporary-file "hirune-~a.html"))
         (with-output-to-file np
           #:exists 'replace
           (λ () (write-xexpr xe)))
@@ -121,9 +121,9 @@
                    [sandbox-error-output 'string])
       (make-evaluator 'racket '(require math))))
 
-  (define top-rf (new rune-file%))
-  (define history-rf (new rune-file%))
-  (define minibuf-rf (new rune-file%))
+  (define top-rf (new hirune-file%))
+  (define history-rf (new hirune-file%))
+  (define minibuf-rf (new hirune-file%))
 
   (send top-rf uri 'top)
   (send history-rf uri/bot 'body 0 0)
@@ -166,7 +166,7 @@
              ,(format "昼寝(ひるね) ~a: ⊨αβγδεζηθικλμνξοπρςτυφχψω"
                       (current-milliseconds))
              (img ([style "float: right;"]
-                   [src ,(path->rune-file-url domo.jpg)]) ""))))
+                   [src ,(path->hirune-file-url domo.jpg)]) ""))))
     (send top-rf uri 'top))
 
   (define (process s e)
@@ -187,35 +187,35 @@
                               'SCROLL_VERT)
                           _))
          s]
-        [(event:rune:key 'C-<left>)
+        [(event:hirune:key 'C-<left>)
          (state h mb 0)]
-        [(event:rune:key '<left>)
+        [(event:hirune:key '<left>)
          (state h mb (max 0 (sub1 mbc)))]
-        [(event:rune:key 'C-<right>)
+        [(event:hirune:key 'C-<right>)
          (state h mb (buffer-row-cols mb 0))]
-        [(event:rune:key '<right>)
+        [(event:hirune:key '<right>)
          (state h mb (min (buffer-row-cols mb 0) (add1 mbc)))]
-        [(event:rune:key (or '<backspace> 'S-<backspace>))
+        [(event:hirune:key (or '<backspace> 'S-<backspace>))
          (cond
            [(> mbc 0)
             (define-values (_ mbp) (buffer-delete-previous mb 0 mbc))
             (state h mbp (sub1 mbc))]
            [else
             s])]
-        [(event:rune:key '<delete>)
+        [(event:hirune:key '<delete>)
          (cond
            [(< mbc (buffer-row-cols mb 0))
             (define-values (_ mbp) (buffer-delete-next mb 0 mbc))
             (state h mbp mbc)]
            [else
             s])]
-        [(event:rune:key
+        [(event:hirune:key
           (or (? char? c)
               (and (or 'S-<space> '<space>)
                    (bind c #\space))))
          (define mbp (buffer-insert-char mb 0 mbc c))
          (state h mbp (add1 mbc))]
-        [(event:rune:key '<return>)
+        [(event:hirune:key '<return>)
          (define mbs (buffer->string mb))
          (define maybe-error
            (with-handlers ([exn:fail?
