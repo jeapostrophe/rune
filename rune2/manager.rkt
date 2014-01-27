@@ -37,6 +37,7 @@
            (string->buffer "") 0))
 
   (define (update-top!)
+    ;; xxx something more interesting
     (uzbl-send! 'top (format "set inject_html = ~a" (current-milliseconds))))
 
   ;; xxx I want two modes: send every command to the active
@@ -52,6 +53,7 @@
     (update-top!)
     (match-define (state h hr mb mbc) s)
     (define mbp (buffer-insert-char mb 0 mbc c))
+    ;; xxx better formatting
     (uzbl-send! 'bot (format "set inject_html = ~a" (buffer->string mbp)))
     (state h hr mbp (add1 mbc)))
 
@@ -95,6 +97,9 @@
                                addl))
        (update-top!)
        (display-to-file (buffer->string hp) history-p #:exists 'replace)
+       ;; xxx seek to new line
+       ;; xxx show errors
+       ;; xxx better formating
        (uzbl-send! 'body (format "uri ~a" history-p))
        (uzbl-send! 'bot (format "set inject_html = ~a" ""))
 
