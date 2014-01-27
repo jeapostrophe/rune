@@ -23,7 +23,6 @@
     (send! (command:uzbl:send name cmd)))
 
   (send! (command:uzbl:attach 'body))
-  (uzbl-send! 'bot "set inject_html = BOT")
 
   (require racket/sandbox)
   (define evaler
@@ -40,7 +39,7 @@
     ;; xxx something more interesting
     (uzbl-send! 'top (format "set inject_html = ~a" (current-milliseconds))))
 
-  ;; xxx I want two modes: send every command to the active
+  ;; xxx I want two modes: send every key/command to the active
   ;; application or do stuff in the minibuffer on the bottom
 
   ;; xxx I want the mini-buffer to be like a little edit, using the
@@ -89,9 +88,7 @@
           "> "
           mbs
           "\n"
-          (string-trim
-           (get-output evaler))
-          "\n"))
+          (get-output evaler)))
        (define hp
          (buffer-insert-string h hr 0
                                addl))
