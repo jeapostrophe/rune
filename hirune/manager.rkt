@@ -65,6 +65,10 @@
 
   ;; xxx delete old files
 
+  ;; xxx there really isn't much similar between the different uses of
+  ;; this. i think it would be better to have a helper library that
+  ;; turns a buffer into a xe and another one that takes an xe, writes
+  ;; it to a file, and navigates to that.
   (define hirune-file%
     (class object%
       (define p #f)
@@ -106,6 +110,7 @@
       (define/public (bufrep b)
         (rep (buffer->strings b)))
       (define/public (bufrep/cursor b row col)
+        ;; xxx turn into a dark background, blinking, like emacs/urxvt
         (bufrep (buffer-insert-char b row col #\‸)))
 
       (super-new)
@@ -138,7 +143,8 @@
   ;; application or do stuff in the minibuffer on the bottom
 
   ;; xxx I want the mini-buffer to be like a little edit, using the
-  ;; same structures, etc as the editor program
+  ;; same structures, etc as the editor program. maybe make an editor
+  ;; class and share everything.
 
   ;; xxx I want the mini-buffer to keep track of/have a unified
   ;; history/completion system
@@ -146,6 +152,7 @@
   (define (refresh s)
     (match-define (state h mb mbc) s)
 
+    ;; xxx make the bottom status bar
     (send minibuf-rf bufrep/cursor mb 0 mbc)
     (send minibuf-rf uri/bot 'bot 0 mbc)
 
@@ -160,6 +167,7 @@
     (send history-rf uri/bot 'body (length h) 0)
 
     ;; xxx something more interesting
+    ;; xxx tie to time / frp system
     (send top-rf rep
           (list
            `(span
@@ -168,6 +176,14 @@
              (img ([style "float: right;"]
                    [src ,(path->hirune-file-url domo.jpg)]) ""))))
     (send top-rf uri 'top))
+
+  ;; xxx separate out REPL
+  ;; xxx allow app sign-ups with some api (tcp then uds)
+  ;; xxx make a calculator
+  ;; xxx make a "buffer list"
+  ;; xxx make a terminal/shell
+  ;; xxx make an editor
+  ;; xxx make a web browser
 
   (define (process s e)
     (match-define (state h mb mbc) s)
