@@ -27,10 +27,12 @@ html {
     vertical-align: baseline;
 
     font-family: "DejaVu Sans Mono", "DejaVu", monospace;
+    /* xxx better way of managing color */
     color: #657b83;
     background-color: #fdf6e3;
 }
 
 span.row {
     display: block;
+    white-space: pre;
 }

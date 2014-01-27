@@ -79,6 +79,7 @@
              (div ([id "top"] [class "file"])
                   ,@(for/list ([r (in-list ls)]
                                [i (in-naturals)])
+                      ;; xxx show the cursor
                       `(span ([class "row"] [id ,(format "row~a" i)])
                              ,r))))))
         (with-output-to-file p
@@ -109,8 +110,9 @@
   (send minibuf-rf uri 'bot 0)
 
   (struct state (history history-rows minibuf minibuf-cols))
+  (define hb (string->buffer (file->string gui-path)))
   (define is
-    (state (string->buffer "") 0
+    (state hb (sub1 (buffer-rows hb))
            (string->buffer "") 0))
 
   ;; xxx I want two modes: send every key/command to the active
@@ -121,6 +123,27 @@
 
   ;; xxx I want the mini-buffer to keep track of/have a unified
   ;; history/completion system
+
+  (define (refresh s)
+    (match-define (state h hr mb mbc) s)
+
+    (send minibuf-rf bufrep mb)
+    (send minibuf-rf uri 'bot 0)
+
+    (send history-rf bufrep h)
+    (send history-rf uri 'body hr)
+    ;; xxx for some reason only 'body behaves this way.
+    (uzbl-send! 'body "reload_ign_cache")
+
+    ;; xxx something more interesting
+    (send top-rf rep
+          (list
+           `(span
+             ,(format "昼寝(ひるね) ~a: ⊨αβγδεζηθικλμνξοπρςτυφχψω"
+                      (current-milliseconds))
+             (img ([style "float: right;"]
+                   [src ,(path->rune-file-url domo.jpg)]) ""))))
+    (send top-rf uri 'top 0))
 
   (define (process s e)
     (match-define (state h hr mb mbc) s)
@@ -144,13 +167,12 @@
           (or (? char? c)
               (and '<space> (bind c #\space))))
          (define mbp (buffer-insert-char mb 0 mbc c))
-         (send minibuf-rf bufrep mbp)
-         (send minibuf-rf uri 'bot 0)
          (state h hr mbp (add1 mbc))]
         [(event:rune:key '<return>)
          (define mbs (buffer->string mb))
          (with-handlers ([exn:fail? void])
            (evaler mbs))
+         ;; xxx show errors
          (define addl
            (string-append
             "> "
@@ -161,16 +183,7 @@
            (buffer-insert-string h hr 0 addl))
          (define hrp
            (sub1 (buffer-rows hp)))
-
-         ;; xxx show errors
-         (send history-rf bufrep hp)
-         (send history-rf uri 'body hrp)
-         ;; xxx for some reason only 'body behaves this way.
-         (uzbl-send! 'body "reload_ign_cache")
-
          (define mbp (string->buffer ""))
-         (send minibuf-rf bufrep mbp)
-         (send minibuf-rf uri 'bot 0)
 
          (state hp hrp mbp 0)]
         [e
@@ -178,17 +191,10 @@
          (newline)
          s]))
     (unless (eq? s sp)
-      ;; xxx something more interesting
-      (send top-rf rep
-            (list
-             `(span
-               ,(format "昼寝(ひるね) ~a: ⊨αβγδεζηθικλμνξοπρςτυφχψω"
-                        (current-milliseconds))
-               (img ([style "float: right;"]
-                     [src ,(path->rune-file-url domo.jpg)]) ""))))
-      (send top-rf uri 'top 0))
+      (refresh sp))
     sp)
 
+  (refresh is)
   (let reading ([s is])
     (define e (read stdout))
     (unless (eof-object? e)
