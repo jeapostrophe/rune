@@ -26,6 +26,9 @@
     [(and 1 (bind x 3)) x]
     [(bind x 2) x]))
 
+(define (snoc l x)
+  (append l (list x)))
+
 (module+ main
   (define-values (sp stdout stdin _3)
     (subprocess #f #f (current-error-port)
@@ -94,7 +97,7 @@
                                [i (in-naturals)])
                       ;; xxx show the cursor
                       `(span ([class "row"] [id ,(format "row~a" i)])
-                             ,(number->string i) " " ,r))))))
+                             ,r))))))
         (define np (make-temporary-file "rune-~a.html"))
         (with-output-to-file np
           #:exists 'replace
@@ -103,7 +106,7 @@
       (define/public (bufrep b)
         (rep (buffer->strings b)))
       (define/public (bufrep/cursor b row col)
-        (bufrep (buffer-insert-char b row col #\|)))
+        (bufrep (buffer-insert-char b row col #\‸)))
 
       (super-new)
 
@@ -126,11 +129,10 @@
   (send history-rf uri/bot 'body 0 0)
   (send minibuf-rf uri/bot 'bot 0 0)
 
-  (struct state (history history-rows minibuf minibuf-cols))
-  (define hb (string->buffer (file->string gui-path)))
+  (struct state (history minibuf minibuf-cols))
+  (struct history (cmd stdout stderr))
   (define is
-    (state hb (sub1 (buffer-rows hb))
-           (string->buffer "") 0))
+    (state empty (string->buffer "") 0))
 
   ;; xxx I want two modes: send every key/command to the active
   ;; application or do stuff in the minibuffer on the bottom
@@ -142,13 +144,20 @@
   ;; history/completion system
 
   (define (refresh s)
-    (match-define (state h hr mb mbc) s)
+    (match-define (state h mb mbc) s)
 
     (send minibuf-rf bufrep/cursor mb 0 mbc)
     (send minibuf-rf uri/bot 'bot 0 mbc)
 
-    (send history-rf bufrep h)
-    (send history-rf uri/bot 'body hr 0)
+    (send history-rf rep
+          (for/list ([h (in-list h)])
+            (match-define (history c o e) h)
+            `(span (span ([class "row"]) "> " ,c)
+                   ,@(for/list ([o (in-list o)])
+                       `(span ([class "row cyan"]) ,o))
+                   ,@(for/list ([e (in-list e)])
+                       `(span ([class "row red"]) ,e)))))
+    (send history-rf uri/bot 'body (length h) 0)
 
     ;; xxx something more interesting
     (send top-rf rep
@@ -161,7 +170,7 @@
     (send top-rf uri 'top))
 
   (define (process s e)
-    (match-define (state h hr mb mbc) s)
+    (match-define (state h mb mbc) s)
     (define sp
       (match e
         ;; I'm 70% sure I don't want these
@@ -179,21 +188,21 @@
                           _))
          s]
         [(event:rune:key '<left>)
-         (state h hr mb (max 0 (sub1 mbc)))]
+         (state h mb (max 0 (sub1 mbc)))]
         [(event:rune:key '<right>)
-         (state h hr mb (min (buffer-row-cols mb 0) (add1 mbc)))]
+         (state h mb (min (buffer-row-cols mb 0) (add1 mbc)))]
         [(event:rune:key '<backspace>)
          (cond
            [(> mbc 0)
             (define-values (_ mbp) (buffer-delete-previous mb 0 mbc))
-            (state h hr mbp (sub1 mbc))]
+            (state h mbp (sub1 mbc))]
            [else
             s])]
         [(event:rune:key '<delete>)
          (cond
            [(< mbc (buffer-row-cols mb 0))
             (define-values (_ mbp) (buffer-delete-next mb 0 mbc))
-            (state h hr mbp mbc)]
+            (state h mbp mbc)]
            [else
             s])]
         [(event:rune:key
@@ -201,7 +210,7 @@
               (and (or 'S-<space> '<space>)
                    (bind c #\space))))
          (define mbp (buffer-insert-char mb 0 mbc c))
-         (state h hr mbp (add1 mbc))]
+         (state h mbp (add1 mbc))]
         [(event:rune:key '<return>)
          (define mbs (buffer->string mb))
          (define maybe-error
@@ -210,22 +219,20 @@
                               (string-append (exn-message x) "\n"))])
              (evaler mbs)
              ""))
-         ;; xxx show errors in red
-         (define addl
-           (string-append
-            "> "
-            mbs
-            "\n"
-            (get-output evaler)
-            (get-error-output evaler)
-            maybe-error))
          (define hp
-           (buffer-insert-string h hr 0 addl))
-         (define hrp
-           (sub1 (buffer-rows hp)))
+           (snoc
+            h
+            (history mbs
+                     (string-split
+                      (get-output evaler)
+                      "\n")
+                     (string-split
+                      (string-append (get-error-output evaler)
+                                     maybe-error)
+                      "\n"))))
          (define mbp (string->buffer ""))
 
-         (state hp hrp mbp 0)]
+         (state hp mbp 0)]
         [e
          (write e)
          (newline)
