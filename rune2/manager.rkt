@@ -187,11 +187,15 @@
                               'SCROLL_VERT)
                           _))
          s]
+        [(event:rune:key 'C-<left>)
+         (state h mb 0)]
         [(event:rune:key '<left>)
          (state h mb (max 0 (sub1 mbc)))]
+        [(event:rune:key 'C-<right>)
+         (state h mb (buffer-row-cols mb 0))]
         [(event:rune:key '<right>)
          (state h mb (min (buffer-row-cols mb 0) (add1 mbc)))]
-        [(event:rune:key '<backspace>)
+        [(event:rune:key (or '<backspace> 'S-<backspace>))
          (cond
            [(> mbc 0)
             (define-values (_ mbp) (buffer-delete-previous mb 0 mbc))
