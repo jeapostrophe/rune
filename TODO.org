@@ -10,7 +10,7 @@
 ** look at awesome for more configurable/different WM
 ** look through ergoemacs for features
    http://ergoemacs.org/emacs/emacs.html
-** look at good unicode fonts and substitution
+** program unicode substitution/input system
    http://ergoemacs.org/emacs/emacs_unicode_fonts.html
 ** look at how sam does interacting with external stuff
    http://doc.cat-v.org/bell_labs/sam_lang_tutorial/sam_tut.pdf

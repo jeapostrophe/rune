@@ -151,6 +151,11 @@
   (define last-row (sub1 how-many-rows))
   (buffer-substring b 0 0 last-row (buffer-row-cols b last-row)))
 
+(define (buffer->strings b)
+  (define how-many-rows (buffer-rows b))
+  (for/list ([r (in-range how-many-rows)])
+    (buffer-row b r)))
+
 (define (buffer-row-col b r c)
   (string-ref (buffer-row b r) c))
 
@@ -204,6 +209,9 @@
   [buffer->string
    (-> buffer?
        string?)]
+  [buffer->strings
+   (-> buffer?
+       (listof string?))]
   [buffer-rows
    (-> buffer?
        pos?)]

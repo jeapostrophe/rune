@@ -1,13 +1,29 @@
 #lang racket/base
 (require racket/runtime-path
          racket/match
+         racket/list
          racket/file
          racket/string
+         xml
          rune2/common
-         rune/lib/buffer)
+         racket/class
+         rune/lib/buffer
+         (for-syntax racket/base))
 
 (define RACKET-PATH (find-executable-path "racket"))
 (define-runtime-path gui-path "gui.rkt")
+(define-runtime-path rune-file-style "rune-file.css")
+(define-runtime-path domo.jpg "domo.jpg")
+
+(define-match-expander bind
+  (syntax-rules ()
+    [(_ id e)
+     (app (λ (_) e) id)]))
+
+(module+ test
+  (match 1
+    [(and 1 (bind x 3)) x]
+    [(bind x 2) x]))
 
 (module+ main
   (define-values (sp stdout stdin _3)
@@ -22,6 +38,59 @@
   (define (uzbl-send! name cmd)
     (send! (command:uzbl:send name cmd)))
 
+  (define rune-file-port
+    (let ()
+      (local-require web-server/web-server
+                     web-server/http
+                     (prefix-in files: web-server/dispatchers/dispatch-files)
+                     (prefix-in seq: web-server/dispatchers/dispatch-sequencer)
+                     (prefix-in lift: web-server/dispatchers/dispatch-lift)
+                     web-server/dispatchers/filesystem-map
+                     racket/async-channel)
+      (define confirm-ch (make-async-channel))
+      (serve
+       #:confirmation-channel
+       confirm-ch
+       #:dispatch
+       (files:make #:url->path (make-url->path "/"))
+       #:port 0)
+      (async-channel-get confirm-ch)))
+
+  (define (path->rune-file-url p)
+    (format "http://localhost:~a~a" rune-file-port p))
+
+  (define rune-file%
+    (class object%
+      (define p (make-temporary-file "rune-~a.html"))
+
+      (define/public (pth) p)
+      (define/public (uri name row)
+        (uzbl-send! name (format "set uri = ~a#row~a"
+                                 (path->rune-file-url p)
+                                 row)))
+      (define/public (rep ls)
+        (define xe
+          `(html
+            (head
+             (link ([rel "stylesheet"]
+                    [type "text/css"]
+                    [href ,(path->rune-file-url rune-file-style)])))
+            (body
+             (div ([id "top"] [class "file"])
+                  ,@(for/list ([r (in-list ls)]
+                               [i (in-naturals)])
+                      `(span ([class "row"] [id ,(format "row~a" i)])
+                             ,r))))))
+        (with-output-to-file p
+          #:exists 'replace
+          (λ () (write-xexpr xe))))
+      (define/public (bufrep b)
+        (rep (buffer->strings b)))
+
+      (super-new)
+
+      (rep empty)))
+
   (send! (command:uzbl:attach 'body))
 
   (require racket/sandbox)
@@ -30,14 +99,19 @@
                    [sandbox-output 'string]
                    [sandbox-error-output 'string])
       (make-evaluator 'racket '(require math))))
+
+  (define top-rf (new rune-file%))
+  (define history-rf (new rune-file%))
+  (define minibuf-rf (new rune-file%))
+
+  (send top-rf uri 'top 0)
+  (send history-rf uri 'body 0)
+  (send minibuf-rf uri 'bot 0)
+
   (struct state (history history-rows minibuf minibuf-cols))
   (define is
     (state (string->buffer "") 0
            (string->buffer "") 0))
-
-  (define (update-top!)
-    ;; xxx something more interesting
-    (uzbl-send! 'top (format "set inject_html = ~a" (current-milliseconds))))
 
   ;; xxx I want two modes: send every key/command to the active
   ;; application or do stuff in the minibuffer on the bottom
@@ -48,63 +122,72 @@
   ;; xxx I want the mini-buffer to keep track of/have a unified
   ;; history/completion system
 
-  (define (insert-char s c)
-    (update-top!)
-    (match-define (state h hr mb mbc) s)
-    (define mbp (buffer-insert-char mb 0 mbc c))
-    ;; xxx better formatting
-    (uzbl-send! 'bot (format "set inject_html = ~a" (buffer->string mbp)))
-    (state h hr mbp (add1 mbc)))
-
-  (define history-p (make-temporary-file))
-
   (define (process s e)
-    (match e
-      ;; I'm 70% sure I don't want these
-      [(event:uzbl (or 'bot 'top)
-                   (or 'LOAD_START
-                       'REQUEST_STARTING
-                       'VARIABLE_SET
-                       'LOAD_COMMIT
-                       'TITLE_CHANGED
-                       'LOAD_PROGRESS
-                       'LOAD_FINISH
-                       'SCROLL_HORIZ
-                       'SCROLL_VERT)
-                   _)
-       s]
-      [(event:rune:key (? char? c))
-       (insert-char s c)]
-      [(event:rune:key '<space>)
-       (insert-char s #\space)]
-      [(event:rune:key '<return>)
-       (update-top!)
-       (match-define (state h hr mb mbc) s)
-       (define mbs (buffer->string mb))
-       (with-handlers ([exn:fail? void])
-         (evaler mbs))
-       (define addl
-         (string-append
-          "> "
-          mbs
-          "\n"
-          (get-output evaler)))
-       (define hp
-         (buffer-insert-string h hr 0
-                               addl))
-       (update-top!)
-       (display-to-file (buffer->string hp) history-p #:exists 'replace)
-       ;; xxx seek to new line
-       ;; xxx show errors
-       ;; xxx better formating
-       (uzbl-send! 'body (format "uri ~a" history-p))
-       (uzbl-send! 'bot (format "set inject_html = ~a" ""))
+    (match-define (state h hr mb mbc) s)
+    (define sp
+      (match e
+        ;; I'm 70% sure I don't want these
+        [(and #f
+              (event:uzbl (or 'bot 'top)
+                          (or 'LOAD_START
+                              'REQUEST_STARTING
+                              'VARIABLE_SET
+                              'LOAD_COMMIT
+                              'TITLE_CHANGED
+                              'LOAD_PROGRESS
+                              'LOAD_FINISH
+                              'SCROLL_HORIZ
+                              'SCROLL_VERT)
+                          _))
+         s]
+        [(event:rune:key
+          (or (? char? c)
+              (and '<space> (bind c #\space))))
+         (define mbp (buffer-insert-char mb 0 mbc c))
+         (send minibuf-rf bufrep mbp)
+         (send minibuf-rf uri 'bot 0)
+         (state h hr mbp (add1 mbc))]
+        [(event:rune:key '<return>)
+         (define mbs (buffer->string mb))
+         (with-handlers ([exn:fail? void])
+           (evaler mbs))
+         (define addl
+           (string-append
+            "> "
+            mbs
+            "\n"
+            (get-output evaler)))
+         (define hp
+           (buffer-insert-string h hr 0 addl))
+         (define hrp
+           (sub1 (buffer-rows hp)))
 
-       (state hp (sub1 (buffer-rows hp)) (string->buffer "") 0)]
-      [e
-       (write e)
-       (newline)
-       s]))
+         ;; xxx show errors
+         (send history-rf bufrep hp)
+         (send history-rf uri 'body hrp)
+         ;; xxx for some reason only 'body behaves this way.
+         (uzbl-send! 'body "reload_ign_cache")
+
+         (define mbp (string->buffer ""))
+         (send minibuf-rf bufrep mbp)
+         (send minibuf-rf uri 'bot 0)
+
+         (state hp hrp mbp 0)]
+        [e
+         (write e)
+         (newline)
+         s]))
+    (unless (eq? s sp)
+      ;; xxx something more interesting
+      (send top-rf rep
+            (list
+             `(span
+               ,(format "昼寝(ひるね) ~a: ⊨αβγδεζηθικλμνξοπρςτυφχψω"
+                        (current-milliseconds))
+               (img ([style "float: right;"]
+                     [src ,(path->rune-file-url domo.jpg)]) ""))))
+      (send top-rf uri 'top 0))
+    sp)
 
   (let reading ([s is])
     (define e (read stdout))
