@@ -12,7 +12,8 @@
 
 (define RACKET-PATH (find-executable-path "racket"))
 (define-runtime-path gui-path "gui.rkt")
-(define-runtime-path rune-file-style "rune-file.css")
+(define-runtime-path rune-file.css "rune-file.css")
+(define-runtime-path rune-file.js "rune-file.js")
 (define-runtime-path domo.jpg "domo.jpg")
 
 (define-match-expander bind
@@ -59,34 +60,50 @@
   (define (path->rune-file-url p)
     (format "http://localhost:~a~a" rune-file-port p))
 
+  ;; xxx delete old files
+
   (define rune-file%
     (class object%
-      (define p (make-temporary-file "rune-~a.html"))
+      (define p #f)
 
-      (define/public (pth) p)
-      (define/public (uri name row)
-        (uzbl-send! name (format "set uri = ~a#row~a"
+      (define (really-uri name after)
+        (unless p
+          (error 'rune-file% "Initialize first!"))
+        (uzbl-send! name (format "set uri = ~a#~a"
                                  (path->rune-file-url p)
-                                 row)))
+                                 after)))
+      (define/public (uri name)
+        (really-uri name ""))
+      ;; xxx add bot, center, and top
+      ;; xxx add cursor, or not
+      (define/public (uri/bot name row col)
+        (really-uri name
+                    (format "row~a" row)))
       (define/public (rep ls)
         (define xe
           `(html
             (head
              (link ([rel "stylesheet"]
                     [type "text/css"]
-                    [href ,(path->rune-file-url rune-file-style)])))
+                    [href ,(path->rune-file-url rune-file.css)]))
+             (script ([src "//code.jquery.com/jquery-1.10.1.min.js"]) "")
+             (script ([src ,(path->rune-file-url rune-file.js)]) ""))
             (body
              (div ([id "top"] [class "file"])
                   ,@(for/list ([r (in-list ls)]
                                [i (in-naturals)])
                       ;; xxx show the cursor
                       `(span ([class "row"] [id ,(format "row~a" i)])
-                             ,r))))))
-        (with-output-to-file p
+                             ,(number->string i) " " ,r))))))
+        (define np (make-temporary-file "rune-~a.html"))
+        (with-output-to-file np
           #:exists 'replace
-          (λ () (write-xexpr xe))))
+          (λ () (write-xexpr xe)))
+        (set! p np))
       (define/public (bufrep b)
         (rep (buffer->strings b)))
+      (define/public (bufrep/cursor b row col)
+        (bufrep (buffer-insert-char b row col #\|)))
 
       (super-new)
 
@@ -105,9 +122,9 @@
   (define history-rf (new rune-file%))
   (define minibuf-rf (new rune-file%))
 
-  (send top-rf uri 'top 0)
-  (send history-rf uri 'body 0)
-  (send minibuf-rf uri 'bot 0)
+  (send top-rf uri 'top)
+  (send history-rf uri/bot 'body 0 0)
+  (send minibuf-rf uri/bot 'bot 0 0)
 
   (struct state (history history-rows minibuf minibuf-cols))
   (define hb (string->buffer (file->string gui-path)))
@@ -127,13 +144,11 @@
   (define (refresh s)
     (match-define (state h hr mb mbc) s)
 
-    (send minibuf-rf bufrep mb)
-    (send minibuf-rf uri 'bot 0)
+    (send minibuf-rf bufrep/cursor mb 0 mbc)
+    (send minibuf-rf uri/bot 'bot 0 mbc)
 
     (send history-rf bufrep h)
-    (send history-rf uri 'body hr)
-    ;; xxx for some reason only 'body behaves this way.
-    (uzbl-send! 'body "reload_ign_cache")
+    (send history-rf uri/bot 'body hr 0)
 
     ;; xxx something more interesting
     (send top-rf rep
@@ -143,7 +158,7 @@
                       (current-milliseconds))
              (img ([style "float: right;"]
                    [src ,(path->rune-file-url domo.jpg)]) ""))))
-    (send top-rf uri 'top 0))
+    (send top-rf uri 'top))
 
   (define (process s e)
     (match-define (state h hr mb mbc) s)
@@ -163,22 +178,47 @@
                               'SCROLL_VERT)
                           _))
          s]
+        [(event:rune:key '<left>)
+         (state h hr mb (max 0 (sub1 mbc)))]
+        [(event:rune:key '<right>)
+         (state h hr mb (min (buffer-row-cols mb 0) (add1 mbc)))]
+        [(event:rune:key '<backspace>)
+         (cond
+           [(> mbc 0)
+            (define-values (_ mbp) (buffer-delete-previous mb 0 mbc))
+            (state h hr mbp (sub1 mbc))]
+           [else
+            s])]
+        [(event:rune:key '<delete>)
+         (cond
+           [(< mbc (buffer-row-cols mb 0))
+            (define-values (_ mbp) (buffer-delete-next mb 0 mbc))
+            (state h hr mbp mbc)]
+           [else
+            s])]
         [(event:rune:key
           (or (? char? c)
-              (and '<space> (bind c #\space))))
+              (and (or 'S-<space> '<space>)
+                   (bind c #\space))))
          (define mbp (buffer-insert-char mb 0 mbc c))
          (state h hr mbp (add1 mbc))]
         [(event:rune:key '<return>)
          (define mbs (buffer->string mb))
-         (with-handlers ([exn:fail? void])
-           (evaler mbs))
-         ;; xxx show errors
+         (define maybe-error
+           (with-handlers ([exn:fail?
+                            (λ (x)
+                              (string-append (exn-message x) "\n"))])
+             (evaler mbs)
+             ""))
+         ;; xxx show errors in red
          (define addl
            (string-append
             "> "
             mbs
             "\n"
-            (get-output evaler)))
+            (get-output evaler)
+            (get-error-output evaler)
+            maybe-error))
          (define hp
            (buffer-insert-string h hr 0 addl))
          (define hrp
