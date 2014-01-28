@@ -6,6 +6,7 @@
          racket/string
          xml
          hirune/common
+         hirune/util
          hirune
          racket/class
          rune/lib/buffer
@@ -13,6 +14,7 @@
 
 (define RACKET-PATH (find-executable-path "racket"))
 (define-runtime-path gui-path "gui.rkt")
+(define-runtime-path apps-path "apps")
 (define-runtime-path domo.jpg "domo.jpg")
 
 (define-match-expander bind
@@ -37,16 +39,26 @@
    #:port 0)
   (async-channel-get confirm-ch))
 
+(struct manager (happ minibuf) #:transparent)
+(struct hiapp (name in out) #:transparent)
+(struct editor (buf col) #:transparent)
+
+(define (spawn-app name impl)
+  (define impl-path (build-path apps-path impl))
+  (define-values (sp out in _3)
+    (subprocess #f #f (current-error-port)
+                RACKET-PATH
+                "-t" impl-path
+                "--"
+                "--file-port" (number->string (hirune-file-port))))
+  (hiapp name in (read-evt out)))
+
 (module+ main
-  (define-values (sp stdout stdin _3)
+  (define-values (sp gui-outp gui-in _3)
     (subprocess #f #f (current-error-port)
                 RACKET-PATH
                 "-t" gui-path))
-
-  (define (send! c)
-    (write c stdin)
-    (newline stdin)
-    (flush-output stdin))
+  (define gui-out (read-evt gui-outp))
 
   (make-directory* HIRUNE-DIR)
 
@@ -58,22 +70,22 @@
   (define (uzbl-update! name ur)
     (match-define (hirune-update after pbs) ur)
     (define p (bytes->path pbs))
-    (send!
+    (writeln
      (command:uzbl:send name
                         (format "set uri = ~a~a"
                                 (path->hirune-file-url p)
-                                after)))
+                                after))
+     gui-in)
     (define op (hash-ref name->old name #f))
     (when op
       (delete-file op))
     (hash-set! name->old name p))
 
-  (send! (command:uzbl:attach 'app))
-
-  (struct state (minibuf minibuf-col))
+  (writeln (command:uzbl:attach 'app) gui-in)
+  (define repl-app (spawn-app 'app "repl.rkt"))
 
   (define (refresh s)
-    (match-define (state mb mbc) s)
+    (match-define (manager _ (editor mb mbc)) s)
 
     (uzbl-update!
      'bot
@@ -88,10 +100,11 @@
              (img ([style "float: right;"]
                    [src ,(path->hirune-file-url domo.jpg)]) "")))))
 
-  ;; xxx separate most of the commands out into functions to make it
-  ;; easy to customize the bindings
-  (define (process s e)
-    (match-define (state mb mbc) s)
+  (define (initial-editor)
+    (editor (string->buffer "") 0))
+
+  (define (manager-process s e)
+    (match-define (manager ha edit) s)
     (match e
       ;; I'm 70% sure I don't want these
       [(and #f
@@ -107,26 +120,40 @@
                             'SCROLL_VERT)
                         _))
        s]
+      [(event:hirune:key '<return>)
+       (match-define (editor mb _) edit)
+       (match-define (hiapp _ in _) ha)
+       (define mbs (buffer->string mb))
+       ;; xxx wrap in some way?
+       (writeln mbs in)
+       (manager ha (initial-editor))]
+      [e
+       (define editp (editor-process edit e))
+       (manager ha editp)]))
+
+  (define (editor-process s e)
+    (match-define (editor mb mbc) s)
+    (match e
       [(event:hirune:key 'C-<left>)
-       (state mb 0)]
+       (editor mb 0)]
       [(event:hirune:key '<left>)
-       (state mb (max 0 (sub1 mbc)))]
+       (editor mb (max 0 (sub1 mbc)))]
       [(event:hirune:key 'C-<right>)
-       (state mb (buffer-row-cols mb 0))]
+       (editor mb (buffer-row-cols mb 0))]
       [(event:hirune:key '<right>)
-       (state mb (min (buffer-row-cols mb 0) (add1 mbc)))]
+       (editor mb (min (buffer-row-cols mb 0) (add1 mbc)))]
       [(event:hirune:key (or '<backspace> 'S-<backspace>))
        (cond
          [(> mbc 0)
           (define-values (_ mbp) (buffer-delete-previous mb 0 mbc))
-          (state mbp (sub1 mbc))]
+          (editor mbp (sub1 mbc))]
          [else
           s])]
       [(event:hirune:key '<delete>)
        (cond
          [(< mbc (buffer-row-cols mb 0))
           (define-values (_ mbp) (buffer-delete-next mb 0 mbc))
-          (state mbp mbc)]
+          (editor mbp mbc)]
          [else
           s])]
       [(event:hirune:key
@@ -134,21 +161,25 @@
             (and (or 'S-<space> '<space>)
                  (bind c #\space))))
        (define mbp (buffer-insert-char mb 0 mbc c))
-       (state mbp (add1 mbc))]
-      [(event:hirune:key '<return>)
-       (define mbs (buffer->string mb))
-       ;; xxx send this to active thing
-       (define mbp (string->buffer ""))
-
-       (state mbp 0)]
+       (editor mbp (add1 mbc))]
       [e
-       (write e)
-       (newline)
+       (writeln e)
        s]))
 
-  (let reading ([s (state (string->buffer "") 0)] [last #f])
-    (unless (eq? s last)
+  (let reading ([s (manager repl-app (initial-editor))]
+                [last #f])
+    (match-define (manager (hiapp name app-in app-out) _) s)
+    (unless (equal? s last)
       (refresh s))
-    (define e (read stdout))
-    (unless (eof-object? e)
-      (reading (process s e) s))))
+    (sync
+     (handle-evt
+      app-out
+      (λ (c)
+        ;; xxx maybe other commands
+        (uzbl-update! name c)
+        (reading s s)))
+     (handle-evt
+      gui-out
+      (λ (e)
+        (unless (eof-object? e)
+          (reading (manager-process s e) s)))))))

@@ -5,8 +5,8 @@
          racket/string
          hirune)
 
-(struct world (evaler histories))
-(struct history (cmd stdout stderr))
+(struct world (evaler histories) #:transparent)
+(struct history (cmd stdout stderr) #:transparent)
 
 (define (initial-world)
   (world (parameterize ([sandbox-output 'string]
@@ -41,7 +41,7 @@
 (define (repl-render w)
   (match-define (world _ hs) w)
   (hirune-file
-   #:anchor (format "#line~a" (length hs))
+   #:anchor (format "#line~a" (sub1 (length hs)))
    `(div
      ,@(for/list ([h (in-list hs)]
                   [i (in-naturals)])

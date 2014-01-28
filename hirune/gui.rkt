@@ -9,7 +9,8 @@
          racket/list
          racket/async-channel
          racket/runtime-path
-         hirune/common)
+         hirune/common
+         hirune/util)
 
 (define UZBL-PATH "/usr/bin/uzbl-core")
 (define-runtime-path default-config "uzbl.config")
@@ -158,15 +159,7 @@
   (define rp
     (new vertical-panel% [parent rf]))
 
-  (define command-source (make-async-channel))
-  (define command-reader-t
-    (thread
-     (λ ()
-       (let reading ()
-         (define c (read))
-         (unless (eof-object? c)
-           (async-channel-put command-source c)
-           (reading))))))
+  (define command-source (read-evt (current-input-port)))
 
   (define event-sink (make-async-channel))
 
@@ -280,9 +273,7 @@
            (λ (e)
              (define ep (transform-event e))
              (when ep
-               (write ep)
-               (newline)
-               (flush-output)))))
+               (writeln ep)))))
          (loop)))))
 
   (void))

@@ -1,7 +1,9 @@
 #lang racket/base
 (require racket/runtime-path
+         racket/cmdline
          racket/file
          xml
+         hirune/util
          rune/lib/buffer)
 
 (define HIRUNE-DIR "/tmp/hirune/html")
@@ -55,15 +57,25 @@
                 #:opaque-state os
                 #:command state=>/command
                 #:render state-render)
-  ;; xxx look at env vars or command-line args for connection to manager
 
-  ;; xxx connect to manager and signal that you exist
+  (command-line #:program "hirune"
+                #:once-each
+                ["--file-port" fps
+                 "specify the port used by the hirune file server"
+                 ;; xxx or look at env var
+                 (hirune-file-port (string->number fps))])
 
-  ;; xxx as events/commands come in, update the state and potentially
-  ;; send back updated pages to display
+  ;; xxx use label to signal existence
 
-  ;; xxx init hirune-file-port
-
-  #f)
+  ;; xxx don't assume stdin/out
+  (define command-source (read-evt (current-input-port)))
+  (let loop ([s os] [last #f])
+    (unless (equal? s last)
+      (writeln (state-render s)))
+    (sync
+     (handle-evt
+      command-source
+      (λ (c)
+        (loop (state=>/command s c) s))))))
 
 (provide (all-defined-out))
