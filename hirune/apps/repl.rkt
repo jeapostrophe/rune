@@ -48,9 +48,9 @@
      `(div (span ([id ,(format "line~a" i)] [class "line"])
                  "> " ,c)
            ,@(for/list ([o (in-list o)])
-               `(span ([class "line cyan"]) ,o))
+               `(span ([class "line cyan_fg"]) ,o))
            ,@(for/list ([e (in-list e)])
-               `(span ([class "line red"]) ,e))))))
+               `(span ([class "line red_fg"]) ,e))))))
 
 (define (repl-label w)
   "REPL")

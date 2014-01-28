@@ -56,6 +56,9 @@
 ** app: newsblur
 ** app: org-mode
 ** app: email
+** app: calendar
+** app: fitbit api
+** app: time tracking
 ** status bars & frp
    I feel like the status bars (on top and bottom) really need an
    FRP-like system behind them so that when the time changes or music

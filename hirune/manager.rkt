@@ -87,11 +87,11 @@
                     [href ,(path->hirune-file-url hirune.css)]))
              (script ([src "//code.jquery.com/jquery-1.10.1.min.js"]) "")
              (script ([src ,(path->hirune-file-url hirune.js)]) ""))
-            (body ([class "base00 base3_bg"])
-             (div ([id "top"] [class "file"])
+            (body ([class "content1 bg_bg"])
+             (div ()
                   ,@(for/list ([r (in-list ls)]
                                [i (in-naturals)])
-                      `(span ([class "row"] [id ,(format "row~a" i)])
+                      `(span ([class "line"] [id ,(format "line~a" i)])
                              ,r))))))
         (define np (make-temporary-file "hirune-~a.html"))
         (with-output-to-file np
@@ -131,11 +131,11 @@
     (send history-rf rep
           (for/list ([h (in-list h)])
             (match-define (history c o e) h)
-            `(span (span ([class "row"]) "> " ,c)
+            `(span (span ([class "line"]) "> " ,c)
                    ,@(for/list ([o (in-list o)])
-                       `(span ([class "row cyan"]) ,o))
+                       `(span ([class "line cyan_fg"]) ,o))
                    ,@(for/list ([e (in-list e)])
-                       `(span ([class "row red"]) ,e)))))
+                       `(span ([class "line red_fg"]) ,e)))))
     (send history-rf uri/bot 'body (length h) 0)
 
     (send top-rf rep
