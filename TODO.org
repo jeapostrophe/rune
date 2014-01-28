@@ -1,8 +1,70 @@
 * New Idea
+** hirune-file should support controlling where focus goes
+   For instance, a terminal should have the focused line at the
+   bottom, but an editor should have the focused line in the middle.
+** hirune-file should support a cursor
+   That slowly blinks and is a box like in emacs/urxvt
+** modal: command (minibuf) vs direct
+   In command mode, you type in a little editor and send commands to
+   the app under focus, or your command gets swallowed up by some
+   other listener in between you and the app.
+
+   In direct mode, every key-code, except like Esc, gets send to the
+   same chain.
+
+   Should apps signal that they are willing to do direct mode?
+
+   Should hirune support different kinds of direct mode, like insert
+   vs view?
+** unified editor for many apps plus minibuf
+   I'd like the editing framework to be a unified function/class so
+   that the same keybinds and structures work in the minibuffer as
+   well as various programs.
+** command history/completion w/ context
+   I'd like the command mode to keep a history that is sensitive to
+   the active app AND the context. For instance, the history of what
+   you did in this directory in the shell app.
+
+   How do we make up & down do sensible things if you've done a lot of
+   global commands lately?
+** should minibuf submission only submit on "good" input?
+   For instance, closed parens
+** app: calculator
+   no special features
+** manager: keep track of a "session" of which apps were running
+   and if they don't have opaque-state, then store that to restart
+   them exactly as they were.
+** app: buffer list
+   requires deeper protocol with hirune
+** gui: allow new uzbls to be attached with interesting xmonad-style layout
+   plus closed!
+** gui: change height of top/bot to always show all content
+   by putting it in a div and then reading its height via JS
+
+   http://www.uzbl.org/wiki/fit-window
+   
+   maybe scroll_vert event would help?
+
+** app: terminal w/ shell
+** app: editor
+** app: web browser
+   really, just a direct mode that sends the appropriate commands to
+   uzbl
+** app: irc
+** app: gchat
+** app: miro
+** app: newsblur
+** app: org-mode
+** app: email
+** status bars & frp
+   I feel like the status bars (on top and bottom) really need an
+   FRP-like system behind them so that when the time changes or music
+   plays or something, they will get updated without complex
+   notifications that can be forgotten about.
 ** experiment with mplayer slave
    http://cpansearch.perl.org/src/GBROWN/Gtk2-Ex-MPlayerEmbed-0.02/lib/Gtk2/Ex/MPlayerErmbed.pm
 ** use webkit directly?
-   uzbl is only 5k lines and surf is on 1.4k
+   uzbl is only 5k lines and surf is only 1.4k
 ** caching in uzbl
    Do I need polipo?
 ** look at LightTable for CSS tricks

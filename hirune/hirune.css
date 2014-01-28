@@ -46,7 +46,7 @@ html {
     font-family: "DejaVu Sans Mono", monospace;
 }
 
-span.row {
+span.line {
     display: block;
     white-space: pre;
 }

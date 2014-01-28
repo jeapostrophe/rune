@@ -178,10 +178,6 @@
   (define (uzbl-cmd! name cmd)
     (send uzbl-manager command name cmd))
 
-  ;; xxx make everything but body as tight in height as possible [by
-  ;; putting it in a div and then reading its height via JS]
-  ;; http://www.uzbl.org/wiki/fit-window
-  ;; maybe scroll_vert event would help?
   (define so:top-status
     (new socket% [parent rp]
          [min-height 30]
@@ -215,8 +211,6 @@
      [(command:uzbl:attach name)
       (define so:new (new socket% [parent rbp]))
       (uzbl-attach! name so:new)]
-     ;; xxx close a uzbl
-     ;; xxx control layout
      [(command:exit)
       (exit 0)]
      [c
