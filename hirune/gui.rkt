@@ -13,7 +13,7 @@
 
 (define UZBL-PATH "/usr/bin/uzbl-core")
 (define-runtime-path default-config "uzbl.config")
-(define SOCKET-DIR "/tmp/hirune")
+(define SOCKET-DIR "/tmp/hirune/comm")
 
 (define (key-event->hirune-key ke)
   (define kc

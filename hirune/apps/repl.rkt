@@ -42,15 +42,16 @@
   (match-define (world _ hs) w)
   (hirune-file
    #:anchor (format "#line~a" (length hs))
-   (for/list ([h (in-list hs)]
-              [i (in-naturals)])
-     (match-define (history c o e) h)
-     `(div (span ([id ,(format "line~a" i)] [class "line"])
-                 "> " ,c)
-           ,@(for/list ([o (in-list o)])
-               `(span ([class "line cyan_fg"]) ,o))
-           ,@(for/list ([e (in-list e)])
-               `(span ([class "line red_fg"]) ,e))))))
+   `(div
+     ,@(for/list ([h (in-list hs)]
+                  [i (in-naturals)])
+         (match-define (history c o e) h)
+         `(div (span ([id ,(format "line~a" i)] [class "line"])
+                     "> " ,c)
+               ,@(for/list ([o (in-list o)])
+                   `(span ([class "line cyan_fg"]) ,o))
+               ,@(for/list ([e (in-list e)])
+                   `(span ([class "line red_fg"]) ,e)))))))
 
 (define (repl-label w)
   "REPL")
