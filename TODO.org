@@ -59,6 +59,8 @@
 ** app: calendar
 ** app: fitbit api
 ** app: time tracking
+** use fasl vs read/write?
+** use good queues vs snoc
 ** status bars & frp
    I feel like the status bars (on top and bottom) really need an
    FRP-like system behind them so that when the time changes or music
