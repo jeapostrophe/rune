@@ -83,7 +83,7 @@
                                 (path->hirune-file-url p)
                                 after))
      gui-in)
-    (define op (hash-ref name->old name #f))    
+    (define op (hash-ref name->old name #f))
     (when op
       (delete-file op))
     (hash-set! name->old name p))
@@ -92,11 +92,25 @@
   (define repl-app (spawn-app 'app "repl.rkt"))
 
   (define (refresh s)
-    (match-define (manager _ (editor mb mbc)) s)
+    (match-define (manager ha (editor mb mbc)) s)
 
     (uzbl-update!
      'bot
-     (hirune-file/buffer/cursor mb 0 mbc))
+     (hirune-file
+      `(div
+        (span ([class "line bghi_bg"])
+              ,(format "~a"
+                       (hiapp-label ha)))
+        (span ([class "line"])
+              "⚡ "
+              ,@(for/list ([c (in-sequences
+                               (in-string (buffer->string mb))
+                               (in-string " "))]
+                           [i (in-naturals)])
+                  (define cs (string c))
+                  (if (= i mbc)
+                    `(span ([class "cursor"]) ,cs)
+                    cs))))))
 
     (uzbl-update!
      'top

@@ -50,9 +50,6 @@
 (define (hirune-file/buffer b)
   (hirune-file/lines (buffer->strings b)))
 
-(define (hirune-file/buffer/cursor b row col)
-  (hirune-file/buffer (buffer-insert-char b row col #\‸)))
-
 (define (hirune #:label state-label
                 #:opaque-state os
                 #:command state=>/command

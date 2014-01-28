@@ -5,8 +5,6 @@
 ** hirune-file should support controlling where focus goes
    For instance, a terminal should have the focused line at the
    bottom, but an editor should have the focused line in the middle.
-** hirune-file should support a cursor
-   That slowly blinks and is a box like in emacs/urxvt
 ** modal: command (minibuf) vs direct
    In command mode, you type in a little editor and send commands to
    the app under focus, or your command gets swallowed up by some

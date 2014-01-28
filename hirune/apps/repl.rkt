@@ -2,11 +2,12 @@
 (require racket/sandbox
          racket/list
          racket/match
+         racket/format
          racket/string
          hirune)
 
 (struct world (evaler histories) #:transparent)
-(struct history (cmd stdout stderr) #:transparent)
+(struct history (cmd res stdout stderr) #:transparent)
 
 (define (initial-world)
   (world (parameterize ([sandbox-output 'string]
@@ -19,22 +20,29 @@
 
 (define (repl-command w mbs)
   (match-define (world evaler hs) w)
-  (define maybe-error
+  (define-values
+    (results read-errors)
     (with-handlers ([exn:fail?
                      (λ (x)
-                       (string-append (exn-message x) "\n"))])
-      (evaler mbs)
-      ""))
+                       (values empty (string-append (exn-message x) "\n")))])
+      (values
+       (call-with-values
+           (λ () (evaler mbs))
+         (λ args
+           (filter-map (λ (x) (if (void? x) #f (~a x)))
+                       args)))
+       "")))
   (define hsp
     (snoc
      hs
      (history mbs
+              results
               (string-split
                (get-output evaler)
                "\n")
               (string-split
                (string-append (get-error-output evaler)
-                              maybe-error)
+                              read-errors)
                "\n"))))
   (world evaler hsp))
 
@@ -45,11 +53,13 @@
    `(div
      ,@(for/list ([h (in-list hs)]
                   [i (in-naturals)])
-         (match-define (history c o e) h)
+         (match-define (history c rs o e) h)
          `(div (span ([id ,(format "line~a" i)] [class "line"])
                      "> " ,c)
                ,@(for/list ([o (in-list o)])
                    `(span ([class "line cyan_fg"]) ,o))
+               ,@(for/list ([r (in-list rs)])
+                   `(span ([class "line"]) ,r))
                ,@(for/list ([e (in-list e)])
                    `(span ([class "line red_fg"]) ,e)))))))
 

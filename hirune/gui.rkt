@@ -85,6 +85,7 @@
     (define sender-t
       (thread
        (λ ()
+         ;; xxx change to name->msgs?
          (let sending ([name->to (hasheq)] [msgs empty])
            (define send-msg
              (match-lambda
@@ -195,7 +196,7 @@
 
   (define so:bot-status
     (new socket% [parent rp]
-         [min-height 30]
+         [min-height 40]
          [stretchable-height #f]))
   (uzbl-attach! 'bot so:bot-status)
 

@@ -46,6 +46,10 @@ html {
     font-family: "DejaVu Sans Mono", monospace;
 }
 
+span.cursor {
+    text-decoration: underline;
+}
+
 span.line {
     display: block;
     white-space: pre;
