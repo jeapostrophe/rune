@@ -5,8 +5,7 @@
          racket/file
          xml
          hirune/common
-         hirune/util
-         rune/lib/buffer)
+         hirune/util)
 
 (define HIRUNE-DIR "/tmp/hirune/html")
 
@@ -46,9 +45,6 @@
                       [i (in-naturals)])
              `(span ([class "line"] [id ,(format "line~a" i)])
                     ,l)))))
-
-(define (hirune-file/buffer b)
-  (hirune-file/lines (buffer->strings b)))
 
 (define (hirune #:label state-label
                 #:opaque-state os

@@ -3,24 +3,15 @@
          racket/match
          racket/list
          racket/file
-         racket/string
-         xml
          hirune/common
          hirune/util
          hirune
-         racket/class
-         rune/lib/buffer
-         (for-syntax racket/base))
+         hirune/editor)
 
 (define RACKET-PATH (find-executable-path "racket"))
 (define-runtime-path gui-path "gui.rkt")
 (define-runtime-path apps-path "apps")
 (define-runtime-path domo.jpg "static/domo.jpg")
-
-(define-match-expander bind
-  (syntax-rules ()
-    [(_ id e)
-     (app (λ (_) e) id)]))
 
 (define (start-hirune-file-server)
   (local-require web-server/web-server
@@ -46,7 +37,6 @@
 
 (struct manager (happ minibuf) #:transparent)
 (struct hiapp (name label in out) #:transparent)
-(struct editor (buf col) #:transparent)
 
 (define (spawn-app name impl)
   (define impl-path (build-path apps-path impl))
@@ -92,7 +82,7 @@
   (define repl-app (spawn-app 'app "repl.rkt"))
 
   (define (refresh s)
-    (match-define (manager ha (editor mb mbc)) s)
+    (match-define (manager ha edit) s)
 
     (uzbl-update!
      'bot
@@ -100,15 +90,17 @@
       `(div
         (span ([class "line bghi_bg"])
               ,(format "~a"
+                       ;; xxx get more information
                        (hiapp-label ha)))
         (span ([class "line"])
+              ;; xxx change this with M-x vs cmd vs Input
               "⚡ "
               ,@(for/list ([c (in-sequences
-                               (in-string (buffer->string mb))
+                               (in-string (editor->string edit))
                                (in-string " "))]
                            [i (in-naturals)])
                   (define cs (string c))
-                  (if (= i mbc)
+                  (if (= i (editor-col edit))
                     `(span ([class "cursor"]) ,cs)
                     cs))))))
 
@@ -120,9 +112,6 @@
                       (current-milliseconds))
              (img ([style "float: right;"]
                    [src ,(path->hirune-file-url domo.jpg)]) "")))))
-
-  (define (initial-editor)
-    (editor (string->buffer "") 0))
 
   (define (manager-process s e)
     (match-define (manager ha edit) s)
@@ -143,48 +132,12 @@
        s]
       ;; xxx this kind of shows a difference between M-x and a REPL/sh
       [(event:hirune:key '<return>)
-       (match-define (editor mb _) edit)
-       (define mbs (buffer->string mb))
+       (define mbs (editor->string edit))
        (writeln (event:hirune:command mbs) (hiapp-in ha))
-       (manager ha (initial-editor))]
+       (manager ha (make-editor))]
       [e
        (define editp (editor-process edit e))
        (manager ha editp)]))
-
-  (define (editor-process s e)
-    (match-define (editor mb mbc) s)
-    (match e
-      [(event:hirune:key 'C-<left>)
-       (editor mb 0)]
-      [(event:hirune:key '<left>)
-       (editor mb (max 0 (sub1 mbc)))]
-      [(event:hirune:key 'C-<right>)
-       (editor mb (buffer-row-cols mb 0))]
-      [(event:hirune:key '<right>)
-       (editor mb (min (buffer-row-cols mb 0) (add1 mbc)))]
-      [(event:hirune:key (or '<backspace> 'S-<backspace>))
-       (cond
-         [(> mbc 0)
-          (define-values (_ mbp) (buffer-delete-previous mb 0 mbc))
-          (editor mbp (sub1 mbc))]
-         [else
-          s])]
-      [(event:hirune:key '<delete>)
-       (cond
-         [(< mbc (buffer-row-cols mb 0))
-          (define-values (_ mbp) (buffer-delete-next mb 0 mbc))
-          (editor mbp mbc)]
-         [else
-          s])]
-      [(event:hirune:key
-        (or (? char? c)
-            (and (or 'S-<space> '<space>)
-                 (bind c #\space))))
-       (define mbp (buffer-insert-char mb 0 mbc c))
-       (editor mbp (add1 mbc))]
-      [e
-       (writeln `(event ,e))
-       s]))
 
   (define (command-process s c)
     (match-define (manager ha e) s)
@@ -201,7 +154,7 @@
        (writeln `(command ,c))
        s]))
 
-  (let reading ([s (manager repl-app (initial-editor))]
+  (let reading ([s (manager repl-app (make-editor))]
                 [last #f])
     (match-define (manager ha _) s)
     (unless (equal? s last)
