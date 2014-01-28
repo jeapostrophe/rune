@@ -80,6 +80,8 @@
 
   (writeln (command:uzbl:attach 'app) gui-in)
   (define repl-app (spawn-app 'app "repl.rkt"))
+  (writeln (command:uzbl:attach 'app2) gui-in)
+  (define repl-app2 (spawn-app 'app2 "repl.rkt"))
 
   (define (refresh s)
     (match-define (manager ha edit) s)
@@ -163,7 +165,7 @@
      (handle-evt
       (hiapp-out ha)
       (λ (c)
-        ;; xxx eof protect
+        ;; xxx eof protect (kill app)
         (reading (command-process s c) s)))
      (handle-evt
       gui-out

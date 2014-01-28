@@ -36,10 +36,10 @@
 
 /* other */
 
-html {
-    margin: 0;
-    padding: 0;
-    border: 0;
+html, body {
+    margin: 1px;
+    padding: 0px;
+    border: 0px;
     font-size: 10pt;
     vertical-align: baseline;
 
