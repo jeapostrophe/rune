@@ -1,4 +1,7 @@
 * New Idea
+** remove all-defined-out and add contracts
+** figure out a better customization system
+** figure out a better pipeline between manager-process and editor-process
 ** hirune-file should support controlling where focus goes
    For instance, a terminal should have the focused line at the
    bottom, but an editor should have the focused line in the middle.

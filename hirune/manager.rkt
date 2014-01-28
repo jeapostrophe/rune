@@ -68,7 +68,7 @@
 
   (define name->old (make-hasheq))
   (define (uzbl-update! name ur)
-    (match-define (hirune-update after pbs) ur)
+    (match-define (command:hirune:update after pbs) ur)
     (define p (bytes->path pbs))
     (writeln
      (command:uzbl:send name
@@ -120,12 +120,12 @@
                             'SCROLL_VERT)
                         _))
        s]
+      ;; xxx this kind of shows a difference between M-x and a REPL/sh
       [(event:hirune:key '<return>)
        (match-define (editor mb _) edit)
        (match-define (hiapp _ in _) ha)
        (define mbs (buffer->string mb))
-       ;; xxx wrap in some way?
-       (writeln mbs in)
+       (writeln (event:hirune:command mbs) in)
        (manager ha (initial-editor))]
       [e
        (define editp (editor-process edit e))
@@ -175,7 +175,7 @@
      (handle-evt
       app-out
       (λ (c)
-        ;; xxx maybe other commands
+        ;; xxx maybe other commands?
         (uzbl-update! name c)
         (reading s s)))
      (handle-evt

@@ -1,8 +1,10 @@
 #lang racket/base
 (require racket/runtime-path
          racket/cmdline
+         racket/match
          racket/file
          xml
+         hirune/common
          hirune/util
          rune/lib/buffer)
 
@@ -16,15 +18,13 @@
 (define (path->hirune-file-url p)
   (format "http://localhost:~a~a" (hirune-file-port) p))
 
-(struct hirune-update (after xe) #:prefab)
-
 (define (hirune-xexpr #:anchor [anchor ""]
                       xe)
   (define p (make-temporary-file "hirune-~a.html" #f HIRUNE-DIR))
   (with-output-to-file p
     #:exists 'replace
     (λ () (write-xexpr xe)))
-  (hirune-update anchor (path->bytes p)))
+  (command:hirune:update anchor (path->bytes p)))
 
 (define (hirune-file #:anchor [anchor ""]
                      bxe)
@@ -75,7 +75,9 @@
     (sync
      (handle-evt
       command-source
-      (λ (c)
+      (λ (ec)
+        ;; xxx don't just die on bad events
+        (match-define (event:hirune:command c) ec)
         (loop (state=>/command s c) s))))))
 
 (provide (all-defined-out))
