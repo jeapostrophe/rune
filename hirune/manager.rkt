@@ -15,7 +15,7 @@
 (define RACKET-PATH (find-executable-path "racket"))
 (define-runtime-path gui-path "gui.rkt")
 (define-runtime-path apps-path "apps")
-(define-runtime-path domo.jpg "domo.jpg")
+(define-runtime-path domo.jpg "static/domo.jpg")
 
 (define-match-expander bind
   (syntax-rules ()

@@ -10,8 +10,8 @@
 
 (define HIRUNE-DIR "/tmp/hirune/html")
 
-(define-runtime-path hirune.css "hirune.css")
-(define-runtime-path hirune.js "hirune.js")
+(define-runtime-path hirune.css "static/hirune.css")
+(define-runtime-path hirune.js "static/hirune.js")
 
 (define hirune-file-port (make-parameter #f))
 
