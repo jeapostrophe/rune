@@ -86,29 +86,33 @@
       (thread
        (λ ()
          (let sending ([name->to (hasheq)] [msgs empty])
+           (define send-msg
+             (match-lambda
+              [(cons name cmd)
+               (define to-uzbl (hash-ref name->to name #f))
+               (cond
+                 [to-uzbl
+                  (displayln cmd to-uzbl)
+                  (flush-output to-uzbl)
+                  #f]
+                 [else
+                  #t])]))
            (define msgs-p
-             (filter
-              (match-lambda
-               [(cons name cmd)
-                (define to-uzbl (hash-ref name->to name #f))
-                (cond
-                  [to-uzbl
-                   (displayln cmd to-uzbl)
-                   (flush-output to-uzbl)
-                   #f]
-                  [else
-                   #t])])
-              msgs))
+             (filter send-msg (reverse msgs)))
            (sync
             (handle-evt
              new-to-ch
              (match-lambda
               [(cons name to)
-               (sending (hash-set name->to name to) msgs-p)]))
+               (sending (hash-set name->to name to)
+                        msgs-p)]))
             (handle-evt
              to-ch
              (λ (m)
-               (sending name->to (cons m msgs-p)))))))))
+               (sending name->to
+                        (if (send-msg m)
+                          (cons m msgs-p)
+                          msgs-p)))))))))
 
     (define/public (attach name so)
       (define s-id (send so get-id))
@@ -125,6 +129,7 @@
       (async-channel-put new-from-ch stdout)
 
       ;; xxx for some reason the config file for this gets ignored
+      ;; (you can see the set with a 1 in the event log)
       (command name "set show_status = off"))
 
     (define/public (command name cmd)
@@ -152,7 +157,7 @@
 (module+ main
   (when (directory-exists? SOCKET-DIR)
     (delete-directory/files SOCKET-DIR))
-  (make-directory SOCKET-DIR)
+  (make-directory* SOCKET-DIR)
 
   (define rf
     (new frame% [label "Hirune"]))

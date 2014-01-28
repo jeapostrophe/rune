@@ -28,5 +28,7 @@
 (structc command:uzbl:attach (command:uzbl)
          ([name name/c]))
 (structc command:hirune (command) ())
+(structc command:hirune:label (command:hirune)
+         ([s string?]))
 (structc command:hirune:update (command:hirune)
          ([after string?] [pbs bytes?]))

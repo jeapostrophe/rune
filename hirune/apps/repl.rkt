@@ -41,7 +41,7 @@
 (define (repl-render w)
   (match-define (world _ hs) w)
   (hirune-file
-   #:anchor (format "#line~a" (sub1 (length hs)))
+   #:anchor (format "#line~a" (max 0 (sub1 (length hs))))
    `(div
      ,@(for/list ([h (in-list hs)]
                   [i (in-naturals)])

@@ -65,19 +65,22 @@
                  ;; xxx or look at env var
                  (hirune-file-port (string->number fps))])
 
-  ;; xxx use label to signal existence
-
   ;; xxx don't assume stdin/out
   (define command-source (read-evt (current-input-port)))
   (let loop ([s os] [last #f])
     (unless (equal? s last)
+      (writeln (command:hirune:label (state-label s)))
       (writeln (state-render s)))
     (sync
      (handle-evt
       command-source
       (λ (ec)
-        ;; xxx don't just die on bad events
-        (match-define (event:hirune:command c) ec)
-        (loop (state=>/command s c) s))))))
+        (define sp 
+          (match ec
+            [(event:hirune:command c)
+             (state=>/command s c)]
+            [_
+             s]))
+        (loop sp s))))))
 
 (provide (all-defined-out))

@@ -29,18 +29,23 @@
                  (prefix-in seq: web-server/dispatchers/dispatch-sequencer)
                  (prefix-in lift: web-server/dispatchers/dispatch-lift)
                  web-server/dispatchers/filesystem-map
-                 racket/async-channel)
+                 web-server/dispatchers/dispatch
+                 racket/async-channel
+                 net/url)
   (define confirm-ch (make-async-channel))
   (serve
    #:confirmation-channel
    confirm-ch
    #:dispatch
-   (files:make #:url->path (make-url->path "/"))
+   (seq:make (files:make #:url->path (make-url->path "/"))
+             (λ (conn req)
+               (eprintf "dropped req: ~a\n"
+                        (url->string (request-uri req)))))
    #:port 0)
   (async-channel-get confirm-ch))
 
 (struct manager (happ minibuf) #:transparent)
-(struct hiapp (name in out) #:transparent)
+(struct hiapp (name label in out) #:transparent)
 (struct editor (buf col) #:transparent)
 
 (define (spawn-app name impl)
@@ -51,7 +56,7 @@
                 "-t" impl-path
                 "--"
                 "--file-port" (number->string (hirune-file-port))))
-  (hiapp name in (read-evt out)))
+  (hiapp name impl in (read-evt out)))
 
 (module+ main
   (define-values (sp gui-outp gui-in _3)
@@ -60,6 +65,8 @@
                 "-t" gui-path))
   (define gui-out (read-evt gui-outp))
 
+  (when (directory-exists? HIRUNE-DIR)
+    (delete-directory/files HIRUNE-DIR))
   (make-directory* HIRUNE-DIR)
 
   (define the-hirune-file-port (start-hirune-file-server))
@@ -76,7 +83,7 @@
                                 (path->hirune-file-url p)
                                 after))
      gui-in)
-    (define op (hash-ref name->old name #f))
+    (define op (hash-ref name->old name #f))    
     (when op
       (delete-file op))
     (hash-set! name->old name p))
@@ -123,9 +130,8 @@
       ;; xxx this kind of shows a difference between M-x and a REPL/sh
       [(event:hirune:key '<return>)
        (match-define (editor mb _) edit)
-       (match-define (hiapp _ in _) ha)
        (define mbs (buffer->string mb))
-       (writeln (event:hirune:command mbs) in)
+       (writeln (event:hirune:command mbs) (hiapp-in ha))
        (manager ha (initial-editor))]
       [e
        (define editp (editor-process edit e))
@@ -163,21 +169,35 @@
        (define mbp (buffer-insert-char mb 0 mbc c))
        (editor mbp (add1 mbc))]
       [e
-       (writeln e)
+       (writeln `(event ,e))
+       s]))
+
+  (define (command-process s c)
+    (match-define (manager ha e) s)
+    (match c
+      [(? command:hirune:update?)
+       (uzbl-update! (hiapp-name ha) c)
+       s]
+      [(command:hirune:label ls)
+       (define hap
+         (struct-copy hiapp ha
+                      [label ls]))
+       (manager hap e)]
+      [_
+       (writeln `(command ,c))
        s]))
 
   (let reading ([s (manager repl-app (initial-editor))]
                 [last #f])
-    (match-define (manager (hiapp name app-in app-out) _) s)
+    (match-define (manager ha _) s)
     (unless (equal? s last)
       (refresh s))
     (sync
      (handle-evt
-      app-out
+      (hiapp-out ha)
       (λ (c)
-        ;; xxx maybe other commands?
-        (uzbl-update! name c)
-        (reading s s)))
+        ;; xxx eof protect
+        (reading (command-process s c) s)))
      (handle-evt
       gui-out
       (λ (e)
