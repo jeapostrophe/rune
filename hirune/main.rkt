@@ -72,12 +72,13 @@
      (handle-evt
       command-source
       (λ (ec)
-        (define sp 
-          (match ec
-            [(event:hirune:command c)
-             (state=>/command s c)]
-            [_
-             s]))
-        (loop sp s))))))
+        (unless (eof-object? ec)
+          (define sp
+            (match ec
+              [(event:hirune:command c)
+               (state=>/command s c)]
+              [_
+               s]))
+          (loop sp s)))))))
 
 (provide (all-defined-out))
