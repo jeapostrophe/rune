@@ -3,52 +3,29 @@
 
 (define name/c
   (or/c symbol? exact-nonnegative-integer?))
+(provide (contract-out [name/c contract?]))
 
-(struct event ()
-        #:prefab)
-(struct event:uzbl event
-        (instance name details)
-        #:prefab)
-(struct event:hirune event ()
-        #:prefab)
-(struct event:hirune:key event:hirune
-        (c)
-        #:prefab)
-(struct event:hirune:status event:hirune
-        (m)
-        #:prefab)
+(define-syntax-rule (structc name parent ([field field/c] ...))
+  (begin (struct name parent (field ...) #:prefab)
+         (provide (contract-out [struct name ([field field/c] ...)]))))
 
-(struct command ()
-        #:prefab)
-(struct command:exit command ()
-        #:prefab)
-(struct command:uzbl command ()
-        #:prefab)
-(struct command:uzbl:send command:uzbl 
-        (name cmd)
-        #:prefab)
-(struct command:uzbl:attach command:uzbl 
-        (name)
-        #:prefab)
+(struct event () #:prefab)
+(provide (contract-out [struct event ()]))
 
-(provide
- (contract-out
-  [name/c contract?]
-  [struct event ()]
-  [struct event:uzbl
-          ([instance name/c]
-           [name symbol?]
-           [details string?])]
-  [struct event:hirune ()]
-  [struct event:hirune:key
-          ([c (or/c char? symbol?)])]
-  [struct event:hirune:status
-          ([m string?])]
-  [struct command ()]
-  [struct command:exit ()]
-  [struct command:uzbl ()]
-  [struct command:uzbl:attach 
-          ([name name/c])]
-  [struct command:uzbl:send 
-          ([name name/c]
-           [cmd string?])]))
+(structc event:uzbl event
+         ([instance name/c] [name symbol?] [details string?]))
+(structc event:hirune event ())
+(structc event:hirune:key event:hirune
+         ([c (or/c char? symbol?)]))
+(structc event:hirune:status event:hirune
+         ([m string?]))
+
+(struct command () #:prefab)
+(provide (contract-out [struct command ()]))
+
+(structc command:exit command ())
+(structc command:uzbl command ())
+(structc command:uzbl:send command:uzbl
+         ([name name/c] [cmd string?]))
+(structc command:uzbl:attach command:uzbl
+         ([name name/c]))

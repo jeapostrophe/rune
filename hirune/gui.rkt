@@ -1,7 +1,6 @@
 #lang racket/base
 (require racket/gui/base
          racket/class
-         racket/system
          racket/format
          racket/file
          hirune/socket

@@ -2,23 +2,15 @@
 (require ffi/unsafe
          racket/class
          mred/private/wx/gtk/utils
-         mred/private/wx/gtk/widget
          mred/private/wx/gtk/window
-         mred/private/wx/gtk/client-window
          (prefix-in gui: racket/gui/base)
-         mred/private/wx/gtk/panel
          mred/private/wx/gtk/types)
-
-(provide
- (protect-out
-  socket%))
 
 (define-gtk gtk_socket_new (_fun -> _GtkWidget))
 (define-gtk gtk_socket_add_id (_fun _GtkWidget _int -> _void))
 (define-gtk gtk_socket_steal (_fun _GtkWidget _int -> _void))
 (define-gtk gtk_socket_get_id (_fun _GtkWidget -> _int))
-
-(define-gtk gtk_widget_size_allocate
+(define-gtk gtk_widget_size_allocate 
   (_fun _GtkWidget _GtkAllocation-pointer -> _void))
 
 (define socket%
@@ -57,3 +49,7 @@
     (define gtk (as-gtk-allocation (gtk_socket_new)))
     (gtk_widget_show gtk)
     (gtk_container_add (send this get-client-handle) gtk)))
+
+(provide
+ (protect-out
+  socket%))
