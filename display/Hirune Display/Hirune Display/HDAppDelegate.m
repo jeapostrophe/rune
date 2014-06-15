@@ -1,6 +1,7 @@
 #import <Webkit/WebKit.h>
 #import "HDAppDelegate.h"
 #import "HDSplitView.h"
+#import "HDWindow.h"
 #import "GCDAsyncSocket.h"
 
 @implementation HDAppDelegate
@@ -24,17 +25,6 @@ NSMutableDictionary *views;
      loadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:url]]];
 }
 
-- (void)windowDidBecomeMain:(NSNotification *)notification
-{
-    static BOOL shouldGoFullScreen = YES;
-    if (shouldGoFullScreen) {
-        if (!([self.window styleMask] & NSFullScreenWindowMask)) {
-            [self.window toggleFullScreen:nil];
-        }
-        shouldGoFullScreen = NO;
-    }
-}
-
 - (void)windowDidEnterFullScreen:(NSNotification *)notification
 {
     [self doResize: [[_window contentView] bounds].size];
@@ -46,12 +36,12 @@ NSMutableDictionary *views;
     return frameSize;
 }
 
-CGFloat statusHeight;
+CGFloat statusHeight = 22.0;
 HDSplitView *splitView;
 
 // xxx doesn't really work yet
 - (void)doResize: (NSSize) size {
-    CGFloat botPos = (size.height - 3*statusHeight);
+    CGFloat botPos = (size.height - 2*statusHeight);
     CGFloat topPos = statusHeight;
     
     [splitView setFrameSize: size];
@@ -62,18 +52,40 @@ HDSplitView *splitView;
     return;
 }
 
-- (void)applicationDidFinishLaunching:(NSNotification *)aNotification
-{
-    NSMenu *mainMenu = [[NSApplication sharedApplication] mainMenu];
-    statusHeight = [mainMenu menuBarHeight];
+NSRect bounds;
+
+- (id)init{
+    self = [super init];
+    if (!self) {
+        return nil;
+    }
+    
+    NSRect fullBounds = [[NSScreen mainScreen] frame];
+    bounds = fullBounds;
+    bounds.size.height *= 0.5;
+    bounds.size.width *= 0.5;
+
+    splitView = [[HDSplitView alloc] initWithFrame: bounds];
+
+    _window = [[HDWindow alloc] initWithContentRect:bounds
+                                         styleMask: (NSTitledWindowMask | NSClosableWindowMask | NSMiniaturizableWindowMask | NSResizableWindowMask)
+                                           backing:NSBackingStoreBuffered
+                                             defer:NO];
+    [_window setReleasedWhenClosed:YES];
+    [_window setAcceptsMouseMovedEvents:YES];
+    [_window setContentView: splitView];
+    [_window setCollectionBehavior:
+     NSWindowCollectionBehaviorFullScreenPrimary];
     
     views = [[NSMutableDictionary alloc] init];
     
-    NSView* contentView = [_window contentView];
-    NSRect initFrame = [contentView bounds];
-    splitView = [[HDSplitView alloc] initWithFrame:initFrame];
-    [contentView addSubview:splitView];
-    
+    return self;
+}
+
+- (void)applicationDidFinishLaunching:(NSNotification *)aNotification
+{
+    [_window makeKeyAndOrderFront:self];
+
     [self createView: @"top"];
     [self createView: @"mid"];
     [self createView: @"bot"];
@@ -81,13 +93,15 @@ HDSplitView *splitView;
     [splitView addSubview:[self getView: @"top"]];
     [splitView addSubview:[self getView: @"mid"]];
     [splitView addSubview:[self getView: @"bot"]];
-    [self doResize: initFrame.size];
+    [self doResize: bounds.size];
     
     [self changeView: @"top" toURL: @"http://www.google.com/search?q=top"];
     [self changeView: @"mid" toURL: @"http://www.google.com/search?q=mid"];
     [self changeView: @"bot" toURL: @"http://www.google.com/search?q=bot"];
     
     [self initServer];
+
+    [_window toggleFullScreen:nil];
 }
 
 // Manager API
@@ -168,6 +182,7 @@ GCDAsyncSocket *mainSock;
 {
 	dispatch_async(dispatch_get_main_queue(), ^{
 		@autoreleasepool {
+            NSLog(@"Read");
             NSError *error = nil;
             NSObject *req =
             [NSJSONSerialization

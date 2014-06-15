@@ -2,6 +2,10 @@
 
 @implementation HDWindow
 
+- (BOOL)canBecomeKeyView
+{
+    return  YES;
+}
 - (BOOL)acceptsFirstMouse:(NSEvent *)e {
     return YES;
 }

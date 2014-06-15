@@ -27,5 +27,8 @@
 {
     return self;
 }
-
+- (BOOL)canBecomeKeyView
+{
+    return  YES;
+}
 @end
