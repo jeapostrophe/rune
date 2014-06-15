@@ -1,0 +1,498 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		69406864194E11AA00FD0ED2 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 69406863194E11AA00FD0ED2 /* Cocoa.framework */; };
+		6940686E194E11AA00FD0ED2 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 6940686C194E11AA00FD0ED2 /* InfoPlist.strings */; };
+		69406870194E11AA00FD0ED2 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 6940686F194E11AA00FD0ED2 /* main.m */; };
+		69406874194E11AA00FD0ED2 /* Credits.rtf in Resources */ = {isa = PBXBuildFile; fileRef = 69406872194E11AA00FD0ED2 /* Credits.rtf */; };
+		69406877194E11AA00FD0ED2 /* HDAppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 69406876194E11AA00FD0ED2 /* HDAppDelegate.m */; };
+		6940687A194E11AA00FD0ED2 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = 69406878194E11AA00FD0ED2 /* MainMenu.xib */; };
+		6940687C194E11AA00FD0ED2 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6940687B194E11AA00FD0ED2 /* Images.xcassets */; };
+		69406883194E11AA00FD0ED2 /* XCTest.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 69406882194E11AA00FD0ED2 /* XCTest.framework */; };
+		69406884194E11AA00FD0ED2 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 69406863194E11AA00FD0ED2 /* Cocoa.framework */; };
+		6940688C194E11AA00FD0ED2 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 6940688A194E11AA00FD0ED2 /* InfoPlist.strings */; };
+		6940688E194E11AA00FD0ED2 /* Hirune_DisplayTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 6940688D194E11AA00FD0ED2 /* Hirune_DisplayTests.m */; };
+		69406898194E120D00FD0ED2 /* WebKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 69406897194E120D00FD0ED2 /* WebKit.framework */; };
+		6940689A194E122100FD0ED2 /* JavaScriptCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 69406899194E122100FD0ED2 /* JavaScriptCore.framework */; };
+		695B6DC2194E307300290A5A /* HDSplitView.m in Sources */ = {isa = PBXBuildFile; fileRef = 695B6DC1194E307300290A5A /* HDSplitView.m */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		69406885194E11AA00FD0ED2 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 69406858194E11AA00FD0ED2 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 6940685F194E11AA00FD0ED2;
+			remoteInfo = "Hirune Display";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		69406860194E11AA00FD0ED2 /* Hirune Display.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Hirune Display.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		69406863194E11AA00FD0ED2 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
+		69406866194E11AA00FD0ED2 /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = System/Library/Frameworks/AppKit.framework; sourceTree = SDKROOT; };
+		69406867194E11AA00FD0ED2 /* CoreData.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreData.framework; path = System/Library/Frameworks/CoreData.framework; sourceTree = SDKROOT; };
+		69406868194E11AA00FD0ED2 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
+		6940686B194E11AA00FD0ED2 /* Hirune Display-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Hirune Display-Info.plist"; sourceTree = "<group>"; };
+		6940686D194E11AA00FD0ED2 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		6940686F194E11AA00FD0ED2 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
+		69406871194E11AA00FD0ED2 /* Hirune Display-Prefix.pch */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Hirune Display-Prefix.pch"; sourceTree = "<group>"; };
+		69406873194E11AA00FD0ED2 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.rtf; name = en; path = en.lproj/Credits.rtf; sourceTree = "<group>"; };
+		69406875194E11AA00FD0ED2 /* HDAppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HDAppDelegate.h; sourceTree = "<group>"; };
+		69406876194E11AA00FD0ED2 /* HDAppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HDAppDelegate.m; sourceTree = "<group>"; };
+		69406879194E11AA00FD0ED2 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/MainMenu.xib; sourceTree = "<group>"; };
+		6940687B194E11AA00FD0ED2 /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Images.xcassets; sourceTree = "<group>"; };
+		69406881194E11AA00FD0ED2 /* Hirune DisplayTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Hirune DisplayTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		69406882194E11AA00FD0ED2 /* XCTest.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = XCTest.framework; path = Library/Frameworks/XCTest.framework; sourceTree = DEVELOPER_DIR; };
+		69406889194E11AA00FD0ED2 /* Hirune DisplayTests-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Hirune DisplayTests-Info.plist"; sourceTree = "<group>"; };
+		6940688B194E11AA00FD0ED2 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		6940688D194E11AA00FD0ED2 /* Hirune_DisplayTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = Hirune_DisplayTests.m; sourceTree = "<group>"; };
+		69406897194E120D00FD0ED2 /* WebKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WebKit.framework; path = System/Library/Frameworks/WebKit.framework; sourceTree = SDKROOT; };
+		69406899194E122100FD0ED2 /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
+		695B6DC0194E307300290A5A /* HDSplitView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = HDSplitView.h; sourceTree = "<group>"; };
+		695B6DC1194E307300290A5A /* HDSplitView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = HDSplitView.m; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		6940685D194E11AA00FD0ED2 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6940689A194E122100FD0ED2 /* JavaScriptCore.framework in Frameworks */,
+				69406898194E120D00FD0ED2 /* WebKit.framework in Frameworks */,
+				69406864194E11AA00FD0ED2 /* Cocoa.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6940687E194E11AA00FD0ED2 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				69406884194E11AA00FD0ED2 /* Cocoa.framework in Frameworks */,
+				69406883194E11AA00FD0ED2 /* XCTest.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		69406857194E11AA00FD0ED2 = {
+			isa = PBXGroup;
+			children = (
+				69406869194E11AA00FD0ED2 /* Hirune Display */,
+				69406887194E11AA00FD0ED2 /* Hirune DisplayTests */,
+				69406862194E11AA00FD0ED2 /* Frameworks */,
+				69406861194E11AA00FD0ED2 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		69406861194E11AA00FD0ED2 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				69406860194E11AA00FD0ED2 /* Hirune Display.app */,
+				69406881194E11AA00FD0ED2 /* Hirune DisplayTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		69406862194E11AA00FD0ED2 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				69406899194E122100FD0ED2 /* JavaScriptCore.framework */,
+				69406897194E120D00FD0ED2 /* WebKit.framework */,
+				69406863194E11AA00FD0ED2 /* Cocoa.framework */,
+				69406882194E11AA00FD0ED2 /* XCTest.framework */,
+				69406865194E11AA00FD0ED2 /* Other Frameworks */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		69406865194E11AA00FD0ED2 /* Other Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				69406866194E11AA00FD0ED2 /* AppKit.framework */,
+				69406867194E11AA00FD0ED2 /* CoreData.framework */,
+				69406868194E11AA00FD0ED2 /* Foundation.framework */,
+			);
+			name = "Other Frameworks";
+			sourceTree = "<group>";
+		};
+		69406869194E11AA00FD0ED2 /* Hirune Display */ = {
+			isa = PBXGroup;
+			children = (
+				69406875194E11AA00FD0ED2 /* HDAppDelegate.h */,
+				69406876194E11AA00FD0ED2 /* HDAppDelegate.m */,
+				69406878194E11AA00FD0ED2 /* MainMenu.xib */,
+				6940687B194E11AA00FD0ED2 /* Images.xcassets */,
+				6940686A194E11AA00FD0ED2 /* Supporting Files */,
+				695B6DC0194E307300290A5A /* HDSplitView.h */,
+				695B6DC1194E307300290A5A /* HDSplitView.m */,
+			);
+			path = "Hirune Display";
+			sourceTree = "<group>";
+		};
+		6940686A194E11AA00FD0ED2 /* Supporting Files */ = {
+			isa = PBXGroup;
+			children = (
+				6940686B194E11AA00FD0ED2 /* Hirune Display-Info.plist */,
+				6940686C194E11AA00FD0ED2 /* InfoPlist.strings */,
+				6940686F194E11AA00FD0ED2 /* main.m */,
+				69406871194E11AA00FD0ED2 /* Hirune Display-Prefix.pch */,
+				69406872194E11AA00FD0ED2 /* Credits.rtf */,
+			);
+			name = "Supporting Files";
+			sourceTree = "<group>";
+		};
+		69406887194E11AA00FD0ED2 /* Hirune DisplayTests */ = {
+			isa = PBXGroup;
+			children = (
+				6940688D194E11AA00FD0ED2 /* Hirune_DisplayTests.m */,
+				69406888194E11AA00FD0ED2 /* Supporting Files */,
+			);
+			path = "Hirune DisplayTests";
+			sourceTree = "<group>";
+		};
+		69406888194E11AA00FD0ED2 /* Supporting Files */ = {
+			isa = PBXGroup;
+			children = (
+				69406889194E11AA00FD0ED2 /* Hirune DisplayTests-Info.plist */,
+				6940688A194E11AA00FD0ED2 /* InfoPlist.strings */,
+			);
+			name = "Supporting Files";
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		6940685F194E11AA00FD0ED2 /* Hirune Display */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 69406891194E11AA00FD0ED2 /* Build configuration list for PBXNativeTarget "Hirune Display" */;
+			buildPhases = (
+				6940685C194E11AA00FD0ED2 /* Sources */,
+				6940685D194E11AA00FD0ED2 /* Frameworks */,
+				6940685E194E11AA00FD0ED2 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "Hirune Display";
+			productName = "Hirune Display";
+			productReference = 69406860194E11AA00FD0ED2 /* Hirune Display.app */;
+			productType = "com.apple.product-type.application";
+		};
+		69406880194E11AA00FD0ED2 /* Hirune DisplayTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 69406894194E11AA00FD0ED2 /* Build configuration list for PBXNativeTarget "Hirune DisplayTests" */;
+			buildPhases = (
+				6940687D194E11AA00FD0ED2 /* Sources */,
+				6940687E194E11AA00FD0ED2 /* Frameworks */,
+				6940687F194E11AA00FD0ED2 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				69406886194E11AA00FD0ED2 /* PBXTargetDependency */,
+			);
+			name = "Hirune DisplayTests";
+			productName = "Hirune DisplayTests";
+			productReference = 69406881194E11AA00FD0ED2 /* Hirune DisplayTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		69406858194E11AA00FD0ED2 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				CLASSPREFIX = HD;
+				LastUpgradeCheck = 0510;
+				ORGANIZATIONNAME = Racket;
+				TargetAttributes = {
+					69406880194E11AA00FD0ED2 = {
+						TestTargetID = 6940685F194E11AA00FD0ED2;
+					};
+				};
+			};
+			buildConfigurationList = 6940685B194E11AA00FD0ED2 /* Build configuration list for PBXProject "Hirune Display" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = English;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 69406857194E11AA00FD0ED2;
+			productRefGroup = 69406861194E11AA00FD0ED2 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				6940685F194E11AA00FD0ED2 /* Hirune Display */,
+				69406880194E11AA00FD0ED2 /* Hirune DisplayTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		6940685E194E11AA00FD0ED2 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6940686E194E11AA00FD0ED2 /* InfoPlist.strings in Resources */,
+				6940687C194E11AA00FD0ED2 /* Images.xcassets in Resources */,
+				69406874194E11AA00FD0ED2 /* Credits.rtf in Resources */,
+				6940687A194E11AA00FD0ED2 /* MainMenu.xib in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6940687F194E11AA00FD0ED2 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6940688C194E11AA00FD0ED2 /* InfoPlist.strings in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		6940685C194E11AA00FD0ED2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				69406877194E11AA00FD0ED2 /* HDAppDelegate.m in Sources */,
+				695B6DC2194E307300290A5A /* HDSplitView.m in Sources */,
+				69406870194E11AA00FD0ED2 /* main.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6940687D194E11AA00FD0ED2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6940688E194E11AA00FD0ED2 /* Hirune_DisplayTests.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		69406886194E11AA00FD0ED2 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 6940685F194E11AA00FD0ED2 /* Hirune Display */;
+			targetProxy = 69406885194E11AA00FD0ED2 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin PBXVariantGroup section */
+		6940686C194E11AA00FD0ED2 /* InfoPlist.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				6940686D194E11AA00FD0ED2 /* en */,
+			);
+			name = InfoPlist.strings;
+			sourceTree = "<group>";
+		};
+		69406872194E11AA00FD0ED2 /* Credits.rtf */ = {
+			isa = PBXVariantGroup;
+			children = (
+				69406873194E11AA00FD0ED2 /* en */,
+			);
+			name = Credits.rtf;
+			sourceTree = "<group>";
+		};
+		69406878194E11AA00FD0ED2 /* MainMenu.xib */ = {
+			isa = PBXVariantGroup;
+			children = (
+				69406879194E11AA00FD0ED2 /* Base */,
+			);
+			name = MainMenu.xib;
+			sourceTree = "<group>";
+		};
+		6940688A194E11AA00FD0ED2 /* InfoPlist.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				6940688B194E11AA00FD0ED2 /* en */,
+			);
+			name = InfoPlist.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		6940688F194E11AA00FD0ED2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.9;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		69406890194E11AA00FD0ED2 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.9;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		69406892194E11AA00FD0ED2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				COMBINE_HIDPI_IMAGES = YES;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "Hirune Display/Hirune Display-Prefix.pch";
+				INFOPLIST_FILE = "Hirune Display/Hirune Display-Info.plist";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				WRAPPER_EXTENSION = app;
+			};
+			name = Debug;
+		};
+		69406893194E11AA00FD0ED2 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				COMBINE_HIDPI_IMAGES = YES;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "Hirune Display/Hirune Display-Prefix.pch";
+				INFOPLIST_FILE = "Hirune Display/Hirune Display-Info.plist";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				WRAPPER_EXTENSION = app;
+			};
+			name = Release;
+		};
+		69406895194E11AA00FD0ED2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(BUILT_PRODUCTS_DIR)/Hirune Display.app/Contents/MacOS/Hirune Display";
+				COMBINE_HIDPI_IMAGES = YES;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(DEVELOPER_FRAMEWORKS_DIR)",
+					"$(inherited)",
+				);
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "Hirune Display/Hirune Display-Prefix.pch";
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				INFOPLIST_FILE = "Hirune DisplayTests/Hirune DisplayTests-Info.plist";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				TEST_HOST = "$(BUNDLE_LOADER)";
+				WRAPPER_EXTENSION = xctest;
+			};
+			name = Debug;
+		};
+		69406896194E11AA00FD0ED2 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(BUILT_PRODUCTS_DIR)/Hirune Display.app/Contents/MacOS/Hirune Display";
+				COMBINE_HIDPI_IMAGES = YES;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(DEVELOPER_FRAMEWORKS_DIR)",
+					"$(inherited)",
+				);
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "Hirune Display/Hirune Display-Prefix.pch";
+				INFOPLIST_FILE = "Hirune DisplayTests/Hirune DisplayTests-Info.plist";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				TEST_HOST = "$(BUNDLE_LOADER)";
+				WRAPPER_EXTENSION = xctest;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		6940685B194E11AA00FD0ED2 /* Build configuration list for PBXProject "Hirune Display" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6940688F194E11AA00FD0ED2 /* Debug */,
+				69406890194E11AA00FD0ED2 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		69406891194E11AA00FD0ED2 /* Build configuration list for PBXNativeTarget "Hirune Display" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				69406892194E11AA00FD0ED2 /* Debug */,
+				69406893194E11AA00FD0ED2 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		69406894194E11AA00FD0ED2 /* Build configuration list for PBXNativeTarget "Hirune DisplayTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				69406895194E11AA00FD0ED2 /* Debug */,
+				69406896194E11AA00FD0ED2 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 69406858194E11AA00FD0ED2 /* Project object */;
+}
