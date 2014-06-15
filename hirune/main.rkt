@@ -11,6 +11,7 @@
 
 (define-runtime-path hirune.css "static/hirune.css")
 (define-runtime-path hirune.js "static/hirune.js")
+(define-runtime-path jquery.js "static/jquery-1.5.2.js")
 
 (define hirune-file-port (make-parameter #f))
 
@@ -34,7 +35,8 @@
       (link ([rel "stylesheet"]
              [type "text/css"]
              [href ,(path->hirune-file-url hirune.css)]))
-      (script ([src "//code.jquery.com/jquery-1.10.1.min.js"]) "")
+      (script ([src ,(path->hirune-file-url jquery.js)]) "")
+      ;; (script ([src "//code.jquery.com/jquery-1.10.1.min.js"]) "")
       (script ([src ,(path->hirune-file-url hirune.js)]) ""))
      (body ([class "content1_fg bg_bg"])
            ,bxe))))

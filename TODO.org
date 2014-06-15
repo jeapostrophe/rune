@@ -1,7 +1,16 @@
 * New Idea
+** Where I Am:
+   I need to make the hirune server and deal with multiple apps at once
 ** remove all-defined-out and add contracts
+** Plan to work with DrRacket
+   Share editor% and display technology
+   (Make DrRacket an app?)
+   Share common functionality, like check-syntax and data
+** The Lesson of Vi
+   https://medium.com/programming-ideas-tutorial-and-experience/433852f4b4d1
 ** figure out a better customization system
 ** figure out a better pipeline between manager-process and editor-process
+   https://github.com/shawnpresser/racket-unix-sockets
 ** repl: support input
    how to figure out when the sandbox wants to read?
 ** hirune-file should support controlling where focus goes
@@ -19,6 +28,8 @@
 
    Should hirune support different kinds of direct mode, like insert
    vs view?
+** look at zenpen for style
+   https://github.com/tholman/zenpen
 ** unified editor for many apps plus minibuf
    I'd like the editing framework to be a unified function/class so
    that the same keybinds and structures work in the minibuffer as
@@ -30,10 +41,17 @@
 
    How do we make up & down do sensible things if you've done a lot of
    global commands lately?
+
+   Completion with machine learning/stats/Bayes vs prefix?
 ** should minibuf submission only submit on "good" input?
    For instance, closed parens
 ** app: calculator
    no special features
+** interesting hilighting idea: ids vs keywords
+   https://medium.com/p/3a6db2743a1e/
+   https://medium.com/programming-ideas-tutorial-and-experience/3a6db2743a1e
+** syntactic line compression
+   http://blogs.msdn.com/b/visualstudio/archive/2014/05/23/announcing-update-to-productivity-power-tools-2013.aspx
 ** manager: keep track of a "session" of which apps were running
    and if they don't have opaque-state, then store that to restart
    them exactly as they were.
@@ -49,6 +67,13 @@
    maybe scroll_vert event would help?
 
 ** app: terminal w/ shell
+   https://github.com/vkz/skish
+   https://github.com/stamourv/rash
+
+   http://acko.net/blog/on-termkit/
+   https://news.ycombinator.com/item?id=2559734
+
+   http://finalterm.org/
 ** app: editor
 ** app: web browser
    really, just a direct mode that sends the appropriate commands to
@@ -58,10 +83,14 @@
 ** app: miro
 ** app: newsblur
 ** app: org-mode
+** app: pdf viewer
+   https://github.com/rk700/rbook
 ** app: email
 ** app: calendar
 ** app: fitbit api
 ** app: time tracking
+** app: workrave
+   + eyeleo
 ** use fasl vs read/write?
 ** use good queues vs snoc
 ** status bars & frp
@@ -73,6 +102,12 @@
    http://cpansearch.perl.org/src/GBROWN/Gtk2-Ex-MPlayerEmbed-0.02/lib/Gtk2/Ex/MPlayerErmbed.pm
 ** use webkit directly?
    uzbl is only 5k lines and surf is only 1.4k
+** faster rendering without flickers
+   maybe I should diff the current XE with the next XE and send JS
+   events to modify the dom? this seems like something that might
+   already exist.
+
+   https://github.com/stamourv/sexp-diff
 ** caching in uzbl
    Do I need polipo?
 ** look at LightTable for CSS tricks
@@ -82,8 +117,53 @@
    http://ergoemacs.org/emacs/emacs.html
 ** program unicode substitution/input system
    http://ergoemacs.org/emacs/emacs_unicode_fonts.html
+** hemingway mode
+   http://www.reddit.com/r/emacs/comments/1xqby1/hemingwaymode_id_use_it/
 ** look at how sam does interacting with external stuff
    http://doc.cat-v.org/bell_labs/sam_lang_tutorial/sam_tut.pdf
+** searching
+   https://github.com/ShingoFukuyama/emacs-swoop/
+** look at atom
+   https://github.com/atom
+   https://news.ycombinator.com/item?id=7302941
+** look at node-webkit
+   https://github.com/rogerwang/node-webkit
+** look at zed
+   http://zedapp.org/vision
+** look at interesting emacs/vim plugins
+   god-mode: different key bindings for emacs
+   https://github.com/chrisdone/god-mode
+
+   control-mode: a "mode" (like normal mode in vim) for emacs keys
+   https://github.com/stephendavidmarsh/control-mode
+
+   syntax highlighting and error finding
+   https://github.com/scrooloose/syntastic
+
+   background compiling and test suites
+   https://github.com/tpope/vim-dispatch
+
+   ack (and aq)
+   https://github.com/mileszs/ack.vim
+   https://github.com/Wilfred/ag.el
+
+   you complete me
+   https://github.com/Valloric/YouCompleteMe
+
+   snippets
+   https://github.com/SirVer/ultisnips
+
+   fuzzy finding
+   https://github.com/kien/ctrlp.vim
+   https://github.com/Shougo/unite.vim
+
+   project
+   https://github.com/bbatsov/projectile
+   https://github.com/sabof/project-explorer
+
+   file system tree
+   https://github.com/scrooloose/nerdtree
+   https://github.com/Shougo/vimfiler.vim
 * Rune
 
 Test λ
