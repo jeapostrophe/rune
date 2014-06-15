@@ -65,7 +65,7 @@
                 </menuItem>
             </items>
         </menu>
-        <window title="Hirune" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" restorable="NO" hasShadow="NO" releasedWhenClosed="NO" showsToolbarButton="NO" animationBehavior="none" id="QvC-M9-y7g">
+        <window title="Hirune" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" restorable="NO" hasShadow="NO" releasedWhenClosed="NO" showsToolbarButton="NO" animationBehavior="none" id="QvC-M9-y7g" customClass="HDWindow">
             <windowStyleMask key="styleMask" titled="YES" closable="YES" miniaturizable="YES" resizable="YES"/>
             <windowCollectionBehavior key="collectionBehavior" fullScreenPrimary="YES"/>
             <rect key="contentRect" x="0.0" y="418" width="480" height="360"/>
