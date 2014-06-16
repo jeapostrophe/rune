@@ -16,8 +16,8 @@
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "6940685F194E11AA00FD0ED2"
                BuildableName = "Hirune Display.app"
-               BlueprintName = "Hirune Display"
-               ReferencedContainer = "container:Hirune Display.xcodeproj">
+               BlueprintName = "Hirune"
+               ReferencedContainer = "container:Hirune.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -34,8 +34,8 @@
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "69406880194E11AA00FD0ED2"
                BuildableName = "Hirune DisplayTests.xctest"
-               BlueprintName = "Hirune DisplayTests"
-               ReferencedContainer = "container:Hirune Display.xcodeproj">
+               BlueprintName = "HiruneTests"
+               ReferencedContainer = "container:Hirune.xcodeproj">
             </BuildableReference>
          </TestableReference>
       </Testables>
@@ -44,8 +44,8 @@
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "6940685F194E11AA00FD0ED2"
             BuildableName = "Hirune Display.app"
-            BlueprintName = "Hirune Display"
-            ReferencedContainer = "container:Hirune Display.xcodeproj">
+            BlueprintName = "Hirune"
+            ReferencedContainer = "container:Hirune.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
    </TestAction>
@@ -63,8 +63,8 @@
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "6940685F194E11AA00FD0ED2"
             BuildableName = "Hirune Display.app"
-            BlueprintName = "Hirune Display"
-            ReferencedContainer = "container:Hirune Display.xcodeproj">
+            BlueprintName = "Hirune"
+            ReferencedContainer = "container:Hirune.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
       <AdditionalOptions>
@@ -81,8 +81,8 @@
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "6940685F194E11AA00FD0ED2"
             BuildableName = "Hirune Display.app"
-            BlueprintName = "Hirune Display"
-            ReferencedContainer = "container:Hirune Display.xcodeproj">
+            BlueprintName = "Hirune"
+            ReferencedContainer = "container:Hirune.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>
