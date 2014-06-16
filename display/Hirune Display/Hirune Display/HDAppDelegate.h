@@ -1,7 +1,8 @@
 #import <Cocoa/Cocoa.h>
+#import "HDWindow.h"
 
-@interface HDAppDelegate : NSObject <NSApplicationDelegate, NSSplitViewDelegate, NSWindowDelegate>
+@interface HDAppDelegate : NSObject <NSApplicationDelegate>
 
-@property NSWindow *window;
+@property HDWindow *window;
 
 @end

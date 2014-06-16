@@ -18,6 +18,7 @@
 		695B6DC2194E307300290A5A /* HDSplitView.m in Sources */ = {isa = PBXBuildFile; fileRef = 695B6DC1194E307300290A5A /* HDSplitView.m */; };
 		695B6DC5194E40AC00290A5A /* HDWindow.m in Sources */ = {isa = PBXBuildFile; fileRef = 695B6DC4194E40AC00290A5A /* HDWindow.m */; };
 		695B6DC8194E468300290A5A /* GCDAsyncSocket.m in Sources */ = {isa = PBXBuildFile; fileRef = 695B6DC7194E468300290A5A /* GCDAsyncSocket.m */; };
+		695B6DCE194E702500290A5A /* Starter.icns in Resources */ = {isa = PBXBuildFile; fileRef = 695B6DCD194E702500290A5A /* Starter.icns */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -52,6 +53,7 @@
 		695B6DC4194E40AC00290A5A /* HDWindow.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = HDWindow.m; sourceTree = "<group>"; };
 		695B6DC6194E468300290A5A /* GCDAsyncSocket.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = GCDAsyncSocket.h; path = ../../CocoaAsyncSocket/GCD/GCDAsyncSocket.h; sourceTree = "<group>"; };
 		695B6DC7194E468300290A5A /* GCDAsyncSocket.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = GCDAsyncSocket.m; path = ../../CocoaAsyncSocket/GCD/GCDAsyncSocket.m; sourceTree = "<group>"; };
+		695B6DCD194E702500290A5A /* Starter.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = Starter.icns; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -80,6 +82,7 @@
 		69406857194E11AA00FD0ED2 = {
 			isa = PBXGroup;
 			children = (
+				695B6DCD194E702500290A5A /* Starter.icns */,
 				69406869194E11AA00FD0ED2 /* Hirune */,
 				69406862194E11AA00FD0ED2 /* Frameworks */,
 				69406861194E11AA00FD0ED2 /* Products */,
@@ -222,6 +225,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				695B6DCE194E702500290A5A /* Starter.icns in Resources */,
 				6940686E194E11AA00FD0ED2 /* InfoPlist.strings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
