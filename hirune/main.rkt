@@ -21,6 +21,7 @@
 (define (hirune-xexpr #:anchor [anchor ""]
                       xe)
   (define p (make-temporary-file "hirune-~a.html" #f HIRUNE-DIR))
+  ;; xxx sometimes this fails on OS X
   (with-output-to-file p
     #:exists 'replace
     (λ () (write-xexpr xe)))

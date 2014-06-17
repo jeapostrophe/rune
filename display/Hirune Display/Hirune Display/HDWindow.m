@@ -5,6 +5,11 @@
 
 @implementation HDWindow
 
+// xxx change this
+CGFloat statusHeight = 22.0;
+// xxx make quad webviews
+HDSplitView *splitView;
+
 - (id)init{
     NSRect fullBounds = [[NSScreen mainScreen] frame];
     NSRect bounds = fullBounds;
@@ -51,7 +56,6 @@
     
     [self initServer];
 
-    // XXX make this instant?
     [self toggleFullScreen:nil];
 }
 
@@ -69,10 +73,6 @@
     return frameSize;
 }
 
-CGFloat statusHeight = 22.0;
-HDSplitView *splitView;
-
-// xxx doesn't really work yet
 - (void)doResize: (NSSize) size {
     CGFloat botPos = (size.height - 2*statusHeight);
     CGFloat topPos = statusHeight;
@@ -121,20 +121,35 @@ NSMutableDictionary *views;
 }
 
 -(void)mouseDown:(NSEvent *)e {
+    // xxx send to manager
     NSLog(@"Mouse happen: %@", e);
 }
 -(void)keyDown:(NSEvent *)e {
-    NSLog(@"Key happen: %@", e);
+    NSUInteger mods = [e modifierFlags];
+
+    NSString *modss =
+    [NSString stringWithFormat: @"%@%@%@%@",
+     (mods & NSShiftKeyMask) ? @"S-" : @"",
+     (mods & NSControlKeyMask) ? @"C-" : @"",
+     (mods & NSAlternateKeyMask) ? @"M-" : @"",
+     (mods & NSCommandKeyMask) ? @"Cmd-" : @""];
+
+    NSString *rchars = [e charactersIgnoringModifiers];
+
+    [self managerSend: [NSArray arrayWithObjects: @"key", modss, rchars, nil]];
 }
 
 // Manager API
 
 - (void)managerRecv: (NSObject *)req {
+    // xxx switch to array
     if(! [req isKindOfClass:[NSDictionary class]])
         return;
     
     NSDictionary *dict = (NSDictionary *)req;
     NSString *call = [dict objectForKey: @"call"];
+    // xxx send js to view
+    // xxx resize views
     if ( [call isEqualToString: @"url"] ) {
         [self changeView: [dict objectForKey: @"view"] toURL: [dict objectForKey: @"url"] ];
     }
