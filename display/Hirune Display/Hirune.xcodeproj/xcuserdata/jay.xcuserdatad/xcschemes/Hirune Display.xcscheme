@@ -15,7 +15,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "6940685F194E11AA00FD0ED2"
-               BuildableName = "Hirune Display.app"
+               BuildableName = "Hirune.app"
                BlueprintName = "Hirune"
                ReferencedContainer = "container:Hirune.xcodeproj">
             </BuildableReference>
@@ -33,7 +33,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "69406880194E11AA00FD0ED2"
-               BuildableName = "Hirune DisplayTests.xctest"
+               BuildableName = "HiruneTests.xctest"
                BlueprintName = "HiruneTests"
                ReferencedContainer = "container:Hirune.xcodeproj">
             </BuildableReference>
@@ -43,7 +43,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "6940685F194E11AA00FD0ED2"
-            BuildableName = "Hirune Display.app"
+            BuildableName = "Hirune.app"
             BlueprintName = "Hirune"
             ReferencedContainer = "container:Hirune.xcodeproj">
          </BuildableReference>
@@ -62,7 +62,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "6940685F194E11AA00FD0ED2"
-            BuildableName = "Hirune Display.app"
+            BuildableName = "Hirune.app"
             BlueprintName = "Hirune"
             ReferencedContainer = "container:Hirune.xcodeproj">
          </BuildableReference>
@@ -80,7 +80,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "6940685F194E11AA00FD0ED2"
-            BuildableName = "Hirune Display.app"
+            BuildableName = "Hirune.app"
             BlueprintName = "Hirune"
             ReferencedContainer = "container:Hirune.xcodeproj">
          </BuildableReference>

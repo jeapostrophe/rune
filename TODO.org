@@ -28,6 +28,8 @@
 
    Should hirune support different kinds of direct mode, like insert
    vs view?
+** xiki
+   https://www.kickstarter.com/projects/xiki/xiki-the-command-revolution
 ** look at zenpen for style
    https://github.com/tholman/zenpen
 ** unified editor for many apps plus minibuf
@@ -50,6 +52,14 @@
 ** interesting hilighting idea: ids vs keywords
    https://medium.com/p/3a6db2743a1e/
    https://medium.com/programming-ideas-tutorial-and-experience/3a6db2743a1e
+** code completion
+   normally takes a part of the function and completes to entire
+   function with a little bit of documentation at the same time. it
+   would be interesting to embed searching the documentation into the
+   editing experience so you can select the function based on a search
+   of the documentation (rather than just the function name)
+** make some stuff with the DOS bootstrap theme
+   https://kristopolous.github.io/BOOTSTRA.386/
 ** syntactic line compression
    http://blogs.msdn.com/b/visualstudio/archive/2014/05/23/announcing-update-to-productivity-power-tools-2013.aspx
 ** manager: keep track of a "session" of which apps were running
