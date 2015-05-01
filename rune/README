@@ -1,0 +1,26 @@
+Architecture is similar to X11
+
+Viewer
+- Shows the screen
+- Sends key-events and resize-events to Manager
+- Reads screen state from Manager
+
+Manager
+- Manages the screen layout (like a window manager)
+- Manages the active window (where key-events will be sent)
+- Listens for some key-events to handle itself, others to send to active app
+- Listens for changes from live windows
+- Runs a mini-buffer at the bottom of the screen
+
+Server
+- Should there be something to intermediate between the Manager and the Apps?
+
+Glossary:
+- Screen: A 2D display of Unicode characters
+- App: A program receiving events and display windows
+** Should there be Apps without windows?
+- Window: A 2D display of Unicode characters
+++ Could be 'fixed width by App
+++ Could be 'responsive to Manager's layout
+- Live Window: A Window on the Screen
+- Active Window: The window the user is interacting with
