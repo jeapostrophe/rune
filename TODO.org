@@ -1,4 +1,21 @@
 * New Idea
+** vis
+   https://github.com/martanne/vis
+** sharing opengl textures between contexts
+   http://blog.gvnott.com/some-usefull-facts-about-multipul-opengl-contexts/
+** spacemacs
+   https://github.com/syl20bnr/spacemacs
+** graphical terminals
+   http://www.stenyak.com/archives/1208/trick-of-the-day-rendering-graphics-in-your-terminal/
+** hydra
+   https://github.com/abo-abo/hydra
+** vim binding reference
+   http://bencrowder.net/files/vim-fu/
+** libtermkey and unibilium are modern terminal libraries
+** libvterm is an abstract virtual term library
+** tangeance and circle are neat
+   http://www.leonerd.org.uk/code/tangence/tangence-spec.txt
+** neovim
 ** Where I Am:
    I need to make the hirune server and deal with multiple apps at once
 ** remove all-defined-out and add contracts
@@ -60,6 +77,8 @@
    of the documentation (rather than just the function name)
 ** make some stuff with the DOS bootstrap theme
    https://kristopolous.github.io/BOOTSTRA.386/
+** command queueing on network connectivity
+   for instance, pushing on git and downloading content
 ** syntactic line compression
    http://blogs.msdn.com/b/visualstudio/archive/2014/05/23/announcing-update-to-productivity-power-tools-2013.aspx
 ** manager: keep track of a "session" of which apps were running
@@ -89,6 +108,8 @@
    really, just a direct mode that sends the appropriate commands to
    uzbl
 ** app: irc
+** font: use Input?
+   http://input.fontbureau.com/preview/
 ** app: gchat
 ** app: miro
 ** app: newsblur
@@ -259,6 +280,31 @@ Commands could search their body for overlays of a specific type
 * Tasks
 ** DONE implement gap buffer
    CLOSED: [2013-06-07 Fri 16:17]
+** TODO use reloadable
+   https://github.com/tonyg/racket-reloadable/tree/master
+** TODO elastic tabstops
+   http://nickgravgaard.com/elastictabstops/
+** TODO inventing on principle
+   cool context sensitive animation<->code connections
+   - drag a slider to change a number
+   - embed a color picker
+   - highlight part of a picture based on what code produced it (and
+     backwards)
+   - instant refresh
+
+   try ideas as you think of them
+
+   what about things that aren't animations? how do we turn arbitrary
+   things into visualizations?
+   - show the concrete values of identifiers in function
+   - allow you to change those that are inputs
+   - shows you the value of changes when the change happened (rather
+     than the right being a store)
+   - each iteration is shown as a different column. new lines are
+     added at the beginning of loops to show the mentioned values that
+     change that are used
+
+   show the data, show the comparisons
 ** TODO unicode char input
 ** TODO open by collection path vs file
 ** TODO font rendering
