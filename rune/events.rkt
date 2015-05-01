@@ -39,6 +39,13 @@
          kc-e)))
 
 (struct cell (fg bg c) #:prefab)
-(struct comm:screen-write! (row col c) #:prefab)
+;; xxx close-window
+(struct evt:new-window (local-win-id) #:prefab)
+;; xxx communicate preferred size (editors no bigger than 80 wide)
+(struct evt:new-title (local-win-id title) #:prefab)
+(struct evt:key (win ke) #:prefab)
+;; xxx clear
+(struct evt:resize (win nrows ncols) #:prefab)
+(struct evt:write! (win row col c) #:prefab)
 
 (provide (all-defined-out))

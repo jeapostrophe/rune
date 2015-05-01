@@ -6,33 +6,13 @@
          racket/match
          gfx/color
          mode-tau
+         rune/screen
          rune/colors
          rune/manager
          rune/events
          lux
          lux/chaos/gui
          lux/chaos/gui/key)
-
-(struct screen (rows cols row-vector))
-(define default-cell #f)
-
-(define (make-screen #:rows rows #:cols cols)
-  (screen rows cols
-          (build-vector rows
-                        (λ (rowi)
-                          (make-row #:cols cols)))))
-(define (make-row #:cols cols)
-  (make-vector cols default-cell))
-(define (screen-write! sc row col c)
-  (match-define (screen rows cols row-vector) sc)
-  (when (and (< row rows) (< col cols))
-    (vector-set! (vector-ref row-vector row) col c)))
-(define (screen-copy! source dest)
-  (for ([row (in-vector (screen-row-vector source))]
-        [rowi (in-naturals)])
-    (for ([c (in-vector row)]
-          [coli (in-naturals)])
-      (screen-write! dest rowi coli c))))
 
 (define (start-viewer
          #:font-size [font-size 13.0]
@@ -57,7 +37,7 @@
     [(define (word-fps w)
        0.0)
      (define (word-label s ft)
-       (lux-standard-label "Rune" ft))
+       "Rune")
      (define (word-output v)
        (match-define (viewer w h sc man) v)
        (define bg (colors-ref color-scheme BG))
@@ -90,9 +70,11 @@
                    (app key-event-code 'escape)))
           #f]
          [(? key-event?)
-          (struct-copy viewer v
-                       [man (manager-key-event man (key-event->rune-key e))])]
-         [(comm:screen-write! row col c)
+          (define rk (key-event->rune-key e))
+          (when rk
+            (manager-key-event! man rk))
+          v]
+         [(evt:write! _ row col c)
           (screen-write! sc row col c)
           v]
          [`(resize ,nw ,nh)
@@ -104,8 +86,8 @@
              (define ncols (inexact->exact (floor (/ nw font-width))))
              (define nsc (make-screen #:rows nrows #:cols ncols))
              (screen-copy! sc nsc)
+             (manager-resize! man nrows ncols)
              (struct-copy viewer v
-                          [man (manager-resize man nrows ncols)]
                           [w nw] [h nh]
                           [sc nsc])])]
          [_
