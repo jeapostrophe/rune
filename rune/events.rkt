@@ -38,4 +38,7 @@
          (string->symbol (format "~a~a" mods kc-e))
          kc-e)))
 
+(struct cell (fg bg c) #:prefab)
+(struct comm:screen-write! (row col c) #:prefab)
+
 (provide (all-defined-out))

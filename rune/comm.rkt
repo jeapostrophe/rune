@@ -1,5 +1,6 @@
 #lang racket/base
 (require racket/match
+         racket/fasl
          racket/async-channel
          racket/tcp)
 
@@ -37,7 +38,7 @@
           (define-values (from to) (tcp-accept listener))
           (async-channel-put msg-ch (comm:connected service))
           (forever
-           (define v (read from))
+           (define v (fasl->s-exp from))
            (if (eof-object? v)
                (error 'done)
                (async-channel-put msg-ch v))))))))
@@ -53,7 +54,7 @@
           (define-values (from to) (tcp-connect "localhost" p))
           (forever
            (define v (async-channel-get msg-ch))
-           (write v to)
+           (s-exp->fasl v to)
            (flush-output to)))
         ;; Wait a little bit before trying to connect again
         (sleep 1)))))
@@ -70,7 +71,6 @@
   (struct comm:viewer>:key (k) #:prefab)
   (struct comm:viewer>:ready! () #:prefab)
   (struct comm:>viewer:write! (row col c) #:prefab)
-  (struct comm:>viewer:bg! (bg) #:prefab)
   (provide (all-defined-out)))
 (require (submod "." messages))
 (provide (all-from-out (submod "." messages)))

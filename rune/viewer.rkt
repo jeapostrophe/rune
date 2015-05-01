@@ -6,25 +6,12 @@
          racket/match
          gfx/color
          mode-tau
-         rune/comm
-         rune/keys
+         rune/colors
+         rune/manager
+         rune/events
          lux
          lux/chaos/gui
          lux/chaos/gui/key)
-
-(define gdb (make-glyph-db))
-(define the-font
-  (load-font! gdb
-              ;; xxx configure these and allow them to change during run
-              #:size 13.0
-              #:face "Triplicate T4c"
-              #:family 'modern))
-(define cgdb (compile-glyph-db gdb))
-
-(define a-char (font-glyph-idx the-font cgdb #\A))
-(define font-width (glyph-width cgdb a-char))
-(define font-height (glyph-height cgdb a-char))
-(define render (stage-render cgdb))
 
 (struct screen (rows cols row-vector))
 (define default-cell #f)
@@ -47,74 +34,88 @@
           [coli (in-naturals)])
       (screen-write! dest rowi coli c))))
 
-(struct viewer (w h sc bg from-manager to-manager)
-  #:methods gen:word
-  [(define (word-fps w)
-     0.0)
-   (define (word-label s ft)
-     (lux-standard-label "Rune" ft))
-   (define (word-output v)
-     (match-define (viewer w h sc bg from-manager to-manager) v)
-     (render
-      (red bg) (green bg) (blue bg)
-      ;; NOTE This could be optimized a lot more because it will be
-      ;; the same size a lot of the time.
-      (for/list ([row (in-vector (screen-row-vector sc))]
-                 [rowi (in-naturals)])
-        (for/list ([c (in-vector row)]
-                   [coli (in-naturals)])
-          (match c
-            [#f #f]
-            [(cell fg bg char)
-             (glyph (fl* (fl+ 0.5 (fx->fl coli)) font-width)
-                    (fl* (fl+ 0.5 (fx->fl rowi)) font-height)
-                    (font-glyph-idx the-font cgdb char)
-                    #:fgr (red fg) #:fgg (green fg) #:fgb (blue fg)
-                    #:bgr (red bg) #:bgg (green bg) #:bgb (blue bg))])))))
-   (define (word-evt v)
-     (match-define (viewer w h sc bg from-manager to-manager) v)
-     from-manager)
-   (define (word-event v e)
-     (match-define (viewer w h sc bg from-manager to-manager) v)
-     (match e
-       [(or 'close
-            (and (? key-event?)
-                 (app key-event-code 'escape)))
-        #f]
-       [(? key-event?)
-        (to-manager (comm:viewer>:key (key-event->rune-key e)))
-        v]
-       [(comm:connected 'manager->viewer)
-        (to-manager (comm:viewer>:ready!))
-        v]
-       [(comm:>viewer:write! row col c)
-        (screen-write! sc row col c)
-        v]
-       [(comm:>viewer:bg! nbg)
-        (struct-copy viewer v
-                     [bg nbg])]
-       [`(resize ,nw ,nh)
-        (cond
-          [(and (= w nw) (= h nh))
-           v]
-          [else
-           (define nrows (inexact->exact (floor (/ nh font-height))))
-           (define ncols (inexact->exact (floor (/ nw font-width))))
-           (define nsc (make-screen #:rows nrows #:cols ncols))
-           (screen-copy! sc nsc)
-           (to-manager (comm:viewer>:size nrows ncols))
-           (struct-copy viewer v
-                        [w nw] [h nh]
-                        [sc nsc])])]
-       [_
-        v]))])
+(define (start-viewer
+         #:font-size [font-size 13.0]
+         #:font-face [font-face #f]
+         #:color-scheme [color-scheme default-colors]
+         #:manager [the-man (start-manager)])
+  (define gdb (make-glyph-db))
+  (define the-font
+    (load-font! gdb
+                #:size font-size
+                #:face font-face
+                #:family 'modern))
+  (define cgdb (compile-glyph-db gdb))
 
-(module+ main
+  (define a-char (font-glyph-idx the-font cgdb #\space))
+  (define font-width (glyph-width cgdb a-char))
+  (define font-height (glyph-height cgdb a-char))
+  (define render (stage-render cgdb))
+
+  (struct viewer (w h sc man)
+    #:methods gen:word
+    [(define (word-fps w)
+       0.0)
+     (define (word-label s ft)
+       (lux-standard-label "Rune" ft))
+     (define (word-output v)
+       (match-define (viewer w h sc man) v)
+       (define bg (colors-ref color-scheme BG))
+       (render
+        (red bg) (green bg) (blue bg)
+        ;; NOTE This could be optimized a lot more because it will be
+        ;; the same size a lot of the time.
+        (for/list ([row (in-vector (screen-row-vector sc))]
+                   [rowi (in-naturals)])
+          (for/list ([c (in-vector row)]
+                     [coli (in-naturals)])
+            (match c
+              [#f #f]
+              [(cell fgc bgc char)
+               (define fg (colors-ref color-scheme fgc))
+               (define bg (colors-ref color-scheme bgc))
+               (glyph (fl* (fl+ 0.5 (fx->fl coli)) font-width)
+                      (fl* (fl+ 0.5 (fx->fl rowi)) font-height)
+                      (font-glyph-idx the-font cgdb char)
+                      #:fgr (red fg) #:fgg (green fg) #:fgb (blue fg)
+                      #:bgr (red bg) #:bgg (green bg) #:bgb (blue bg))])))))
+     (define (word-evt v)
+       (match-define (viewer w h sc man) v)
+       (manager-evt man))
+     (define (word-event v e)
+       (match-define (viewer w h sc man) v)
+       (match e
+         [(or 'close
+              (and (? key-event?)
+                   (app key-event-code 'escape)))
+          #f]
+         [(? key-event?)
+          (struct-copy viewer v
+                       [man (manager-key-event man (key-event->rune-key e))])]
+         [(comm:screen-write! row col c)
+          (screen-write! sc row col c)
+          v]
+         [`(resize ,nw ,nh)
+          (cond
+            [(and (= w nw) (= h nh))
+             v]
+            [else
+             (define nrows (- (inexact->exact (floor (/ nh font-height))) 1))
+             (define ncols (inexact->exact (floor (/ nw font-width))))
+             (define nsc (make-screen #:rows nrows #:cols ncols))
+             (screen-copy! sc nsc)
+             (struct-copy viewer v
+                          [man (manager-resize man nrows ncols)]
+                          [w nw] [h nh]
+                          [sc nsc])])]
+         [_
+          v]))])
+
   (call-with-chaos
    (make-gui #:mode gui-mode)
    (λ ()
      (fiat-lux
       (viewer 0 0 (make-screen #:rows 0 #:cols 0)
-              WHITE
-              (comm-listener 'manager->viewer)
-              (comm-sender 'viewer->manager))))))
+              the-man)))))
+
+(provide start-viewer)

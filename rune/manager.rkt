@@ -1,25 +1,35 @@
 #lang racket/base
-(require rune/comm
+(require rune/events
          racket/match
-         gfx/color)
+         racket/async-channel
+         rune/colors)
 
-(module+ main
-  (define l (comm-listener 'viewer->manager))
-  (define s (comm-sender 'manager->viewer))
+(struct manager (rs cs cc evt))
 
-  (let loop ([rs 1] [cs 1])
-    (define-values (nrs ncs)
-      (match (sync l)
-        [(comm:viewer>:size nrs ncs)
-         (values nrs ncs)]
-        [_
-         (values rs cs)]))
-    (s (comm:>viewer:bg! (argb 255 255 0 0)))
-    (s (comm:>viewer:write!
-        (random nrs) (random ncs)
-        (cell
-         (argb 0 (random 255) (random 255) (random 255))
-         (argb 0 (random 255) (random 255) (random 255))
-         (integer->char
-          (+ (char->integer #\a) (random 26))))))
-    (loop nrs ncs)))
+(define (start-manager)
+  (define to-viewer-ch (make-async-channel))
+  (manager 0 0 0 to-viewer-ch))
+
+(define (manager-resize man nrows ncols)
+  (struct-copy manager man
+               [rs nrows]
+               [cs ncols]))
+
+(define (screen-write! ch row col fg bg c)
+  (async-channel-put ch (comm:screen-write! row col (cell fg bg c))))
+
+(define (manager-key-event man ke)
+  (match-define (manager rs cs cc ch) man)
+  (cond
+    [(char? ke)
+     (screen-write! ch (sub1 rs) cc FG-MI BG ke)
+     (struct-copy manager man
+                  [cc (modulo (add1 cc) cs)])]
+    [else
+     man]))
+
+(provide start-manager
+         manager-resize
+         manager-key-event
+         manager-evt
+         manager?)
