@@ -4,7 +4,12 @@
          rune/colors)
 
 (module+ main
-  (start-viewer
-   #:font-face "Triplicate T4c"
-   #:color-scheme solarized-light
-   #:manager (start-manager)))
+  (define m
+    (start-manager))
+  (define v
+    (start-viewer
+     #:font-face "Triplicate T4c"
+     #:opengl-hires? #t
+     #:scale-factor 2
+     #:color-scheme solarized-light
+     #:manager m)))

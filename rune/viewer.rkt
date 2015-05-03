@@ -15,6 +15,8 @@
          lux/chaos/gui/key)
 
 (define (start-viewer
+         #:opengl-hires? [opengl-hires #f]
+         #:scale-factor [scale-factor 1]
          #:font-size [font-size 13.0]
          #:font-face [font-face #f]
          #:color-scheme [color-scheme default-colors]
@@ -22,7 +24,7 @@
   (define gdb (make-glyph-db))
   (define the-font
     (load-font! gdb
-                #:size font-size
+                #:size (* scale-factor font-size)
                 #:face font-face
                 #:family 'modern))
   (define cgdb (compile-glyph-db gdb))
@@ -41,24 +43,27 @@
      (define (word-output v)
        (match-define (viewer w h sc man) v)
        (define bg (colors-ref color-scheme BG))
-       (render
-        (red bg) (green bg) (blue bg)
-        ;; NOTE This could be optimized a lot more because it will be
-        ;; the same size a lot of the time.
-        (for/list ([row (in-vector (screen-row-vector sc))]
-                   [rowi (in-naturals)])
-          (for/list ([c (in-vector row)]
-                     [coli (in-naturals)])
-            (match c
-              [#f #f]
-              [(cell fgc bgc char)
-               (define fg (colors-ref color-scheme fgc))
-               (define bg (colors-ref color-scheme bgc))
-               (glyph (fl* (fl+ 0.5 (fx->fl coli)) font-width)
-                      (fl* (fl+ 0.5 (fx->fl rowi)) font-height)
-                      (font-glyph-idx the-font cgdb char)
-                      #:fgr (red fg) #:fgg (green fg) #:fgb (blue fg)
-                      #:bgr (red bg) #:bgg (green bg) #:bgb (blue bg))])))))
+       (define r
+         (render
+          (red bg) (green bg) (blue bg)
+          ;; NOTE This could be optimized a lot more because it will be
+          ;; the same size a lot of the time.
+          (for/list ([row (in-vector (screen-row-vector sc))]
+                     [rowi (in-naturals)])
+            (for/list ([c (in-vector row)]
+                       [coli (in-naturals)])
+              (match c
+                [#f #f]
+                [(cell fgc bgc char)
+                 (define fg (colors-ref color-scheme fgc))
+                 (define bg (colors-ref color-scheme bgc))
+                 (glyph (fl* (fl+ 0.5 (fx->fl coli)) font-width)
+                        (fl* (fl+ 0.5 (fx->fl rowi)) font-height)
+                        (font-glyph-idx the-font cgdb char)
+                        #:fgr (red fg) #:fgg (green fg) #:fgb (blue fg)
+                        #:bgr (red bg) #:bgg (green bg) #:bgb (blue bg))])))))
+       (λ (w h dc)
+         (r (* scale-factor w) (* scale-factor h) dc)))
      (define (word-evt v)
        (match-define (viewer w h sc man) v)
        (manager-evt man))
@@ -74,10 +79,12 @@
           (when rk
             (manager-key-event! man rk))
           v]
-         [(evt:write! _ row col c)
-          (screen-write! sc row col c)
+         [(evt:write! _ row col cmd)
+          (screen-write! sc row col cmd)
           v]
-         [`(resize ,nw ,nh)
+         [`(resize ,snw ,snh)
+          (define nw (* scale-factor snw))
+          (define nh (* scale-factor snh))
           (cond
             [(and (= w nw) (= h nh))
              v]
@@ -94,7 +101,8 @@
           v]))])
 
   (call-with-chaos
-   (make-gui #:mode gui-mode)
+   (make-gui #:mode gui-mode
+             #:opengl-hires? opengl-hires)
    (λ ()
      (fiat-lux
       (viewer 0 0 (make-screen #:rows 0 #:cols 0)

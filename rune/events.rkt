@@ -2,6 +2,11 @@
 (require racket/match
          racket/class)
 
+(define (rk-despace rk)
+  (if (eq? '<space> rk)
+      #\space
+      rk))
+
 (define (key-event->rune-key ke)
   (define kc
     (match (send ke get-key-code)
@@ -33,10 +38,11 @@
     (if (symbol? kc)
       (string->symbol (format "<~a>" kc))
       kc))
-  (and kc-e
-       (if mods?
-         (string->symbol (format "~a~a" mods kc-e))
-         kc-e)))
+  (rk-despace
+   (and kc-e
+        (if mods?
+            (string->symbol (format "~a~a" mods kc-e))
+            kc-e))))
 
 (struct cell (fg bg c) #:prefab)
 ;; xxx close-window
@@ -46,6 +52,6 @@
 (struct evt:key (win ke) #:prefab)
 ;; xxx clear
 (struct evt:resize (win nrows ncols) #:prefab)
-(struct evt:write! (win row col c) #:prefab)
+(struct evt:write! (win row col cmd) #:prefab)
 
 (provide (all-defined-out))

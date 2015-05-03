@@ -1,5 +1,11 @@
 Architecture is similar to X11
 
+Now that the basic architecture is in place...
++ Write some apps
++ Experiment with other viewers, like terminal and native text
+
+---
+
 Viewer
 - Shows the screen
 - Sends key-events and resize-events to Manager

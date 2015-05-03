@@ -18,7 +18,7 @@
 (define (make-application name comm)
   (application name comm (make-hasheq)))
 
-(struct window (global-id application local-id [title #:mutable] sc [layout #:mutable]))
+(struct window (global-id application local-id [title #:mutable] [layout #:mutable]))
 
 ;; xxx also have to do desktops
 (struct layout (row col rows cols) #:transparent)
@@ -180,7 +180,7 @@
           (define global-id (the-mint))
           (hash-set! local->global local-id global-id)
           (define the-window
-            (window global-id a local-id "" (make-screen #:rows 0 #:cols 0) #f))
+            (window global-id a local-id "" #f))
           (hash-set! id->window global-id the-window)
           (layout-tree:new-window! the-window)]
          [(evt:new-title local-id title)
@@ -189,10 +189,6 @@
             (set-window-title! the-window title))]
          [(evt:write! local-id row col c)
           (with-window [the-window local-id]
-            ;; xxx why keep track of this? i don't use it (I assume
-            ;; apps keep track of their own state and update it when
-            ;; there's a resize)
-            (screen-write! (window-sc the-window) row col c)
             (define lay (window-layout the-window))
             (when lay
               (layout-write! lay row col c)))]
