@@ -79,8 +79,8 @@
           (when rk
             (manager-key-event! man rk))
           v]
-         [(evt:write! _ row col cmd)
-          (screen-write! sc row col cmd)
+         [(evt:write! _ cmd)
+          (screen-write! sc cmd)
           v]
          [`(resize ,snw ,snh)
           (define nw (* scale-factor snw))

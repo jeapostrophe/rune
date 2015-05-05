@@ -44,7 +44,6 @@
             (string->symbol (format "~a~a" mods kc-e))
             kc-e))))
 
-(struct cell (fg bg c) #:prefab)
 ;; xxx close-window
 (struct evt:new-window (local-win-id) #:prefab)
 ;; xxx communicate preferred size (editors no bigger than 80 wide)
@@ -52,6 +51,6 @@
 (struct evt:key (win ke) #:prefab)
 ;; xxx clear
 (struct evt:resize (win nrows ncols) #:prefab)
-(struct evt:write! (win row col cmd) #:prefab)
+(struct evt:write! (win cmd) #:prefab)
 
 (provide (all-defined-out))

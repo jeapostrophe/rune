@@ -21,7 +21,6 @@
 (struct window (global-id application local-id [title #:mutable] [layout #:mutable]))
 
 ;; xxx also have to do desktops
-(struct layout (row col rows cols) #:transparent)
 (struct abstract-layout (row col rows cols gid) #:transparent)
 
 (struct manager (viewer-comm))
@@ -54,7 +53,11 @@
        (comm-send! c> (evt:new-title 0 "*status*"))
        (let loop ()
          (define e (sync (comm-from c>)))
-         (comm-send! c> (evt:write! 0 0 0 (cell FG-MI BG #\!)))
+         (match e
+           [(evt:resize _ r c)
+            (comm-send! c> (evt:write! 0 (cmd:bg BG-HI (cmd:row (cmds:repeat c #\!)))))]
+           [_
+            (void)])
          (loop)))))
   c<)
 
@@ -71,10 +74,10 @@
          (define e (sync (comm-from c>)))
          (match e
            [(? evt:resize?)
-            (comm-send! c> (evt:write! 0 0 0 (cell FG-MI BG #\$)))
+            (comm-send! c> (evt:write! 0 #\$))
             (loop 2)]
            [(evt:key _ (? char? c))
-            (define e (evt:write! 0 0 i (cell FG-MI BG c)))
+            (define e (evt:write! 0 (cmd:posn 0 i c)))
             (comm-send! c> e)
             (loop (add1 i))]
            [e
@@ -149,11 +152,6 @@
          ;; xxx make a function to change border too
          (set! active-id gid))]))
 
-  (define (layout-write! lay row col c)
-    (match-define (layout lrow lcol rows cols) lay)
-    (when (and (< row rows) (< col cols))
-      (comm-send! >viewer (evt:write! 0 (+ lrow row) (+ lcol col) c))))
-
   (define (send-window-resize! w)
     (define lid (window-local-id w))
     (define a (window-application w))
@@ -187,11 +185,11 @@
           (with-window [the-window local-id]
             ;; xxx if title is being displayed, update
             (set-window-title! the-window title))]
-         [(evt:write! local-id row col c)
+         [(evt:write! local-id c)
           (with-window [the-window local-id]
             (define lay (window-layout the-window))
             (when lay
-              (layout-write! lay row col c)))]
+              (comm-send! >viewer (evt:write! 0 (cmd:bounds lay c)))))]
          [x
           (eprintf "unmatched event from application(~v): ~e\n" name x)]))))
 
