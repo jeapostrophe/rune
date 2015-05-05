@@ -42,6 +42,9 @@
   (comm (make-async-channel)
         (make-async-channel)))
 
+;; XXX Make a little protocol where you start this in your rune.rkt
+;; and can send it messages to update values and then it will manage
+;; the line and update things
 (define (start-status)
   ;; xxx have this do stuff
   (define c< (make-local-comm))
@@ -87,7 +90,7 @@
 (define-syntax-rule (forever e ...)
   (let loop () e ... (loop)))
 
-(define (start-manager)
+(define (start-manager #:keymap [km void])
   (define viewer> (make-local-comm))
   (define >viewer (comm-flip viewer>))
   (define status-app (make-application '*status* (start-status)))
@@ -205,6 +208,7 @@
               [(evt:resize _ nrows ncols)
                (layout-tree:resize! nrows ncols)]
               [(evt:key _ ke)
+               (km ke)
                ;; xxx have to have a way to take some messages myself
                (when active-id
                  (define the-window (hash-ref id->window active-id #f))

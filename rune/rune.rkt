@@ -1,11 +1,23 @@
 #lang racket/base
-(require rune/viewer
+(require racket/match
+         rune/viewer
          rune/manager
          rune/colors)
 
 (module+ main
+  (define main-km
+    (λ (ke)
+      (match ke
+        [ke
+         (printf "km: ~a\n" ke)])))
   (define m
-    (start-manager))
+    (start-manager
+     #:keymap main-km))
+  #;#;
+  (define status-bar
+    (start-status-bar))
+  (define command-line
+    (start-command-line))
   (define v
     (start-viewer
      #:font-face "Triplicate T4c"
