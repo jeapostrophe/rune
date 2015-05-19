@@ -63,6 +63,8 @@
                         #:fgr (red fg) #:fgg (green fg) #:fgb (blue fg)
                         #:bgr (red bg) #:bgg (green bg) #:bgb (blue bg))])))))
        (λ (w h dc)
+         (printf "actual size ~v\n" (vector w h))
+         (printf "scaled size ~v\n" (vector (* scale-factor w) (* scale-factor h)))
          (r (* scale-factor w) (* scale-factor h) dc)))
      (define (word-evt v)
        (match-define (viewer w h sc man) v)
@@ -83,8 +85,10 @@
           (screen-write! sc cmd)
           v]
          [`(resize ,snw ,snh)
+          (printf "resize ~v\n" (cons snw snh))
           (define nw (* scale-factor snw))
           (define nh (* scale-factor snh))
+          (printf "scaled resize ~v\n" (cons nw nh))
           (cond
             [(and (= w nw) (= h nh))
              v]

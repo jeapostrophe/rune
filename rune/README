@@ -1,8 +1,16 @@
 Architecture is similar to X11
 
 Now that the basic architecture is in place...
++ Implement the layout engine interface
++ Implement the keymap interface
++ Implement the status bar
++ Implement the command line
 + Write some apps
 + Experiment with other viewers, like terminal and native text
+
+ERRORS
+- XXX The fonts look terrible again on my external display (it's not Retina)
+- XXX There must be a better way!
 
 ---
 
