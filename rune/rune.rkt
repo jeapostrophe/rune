@@ -9,7 +9,7 @@
     (λ (ke)
       (match ke
         [ke
-         (printf "km: ~a\n" ke)])))
+         (printf "km: ~v\n" ke)])))
   (define m
     (start-manager
      #:keymap main-km))
@@ -20,8 +20,8 @@
     (start-command-line))
   (define v
     (start-viewer
+     #:font-sizes '(13.0 26.0)
      #:font-face "Triplicate T4c"
      #:opengl-hires? #t
-     #:scale-factor 2
      #:color-scheme solarized-light
      #:manager m)))

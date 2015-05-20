@@ -14,17 +14,15 @@
          lux/chaos/gui
          lux/chaos/gui/key)
 
-(define (start-viewer
-         #:opengl-hires? [opengl-hires #f]
-         #:scale-factor [scale-factor 1]
-         #:font-size [font-size 13.0]
-         #:font-face [font-face #f]
-         #:color-scheme [color-scheme default-colors]
-         #:manager [the-man (start-manager)])
+(struct vds (cgdb the-font font-width font-height render))
+
+(define (make-viewer-drawing-state
+         #:size font-size
+         #:face font-face)
   (define gdb (make-glyph-db))
   (define the-font
     (load-font! gdb
-                #:size (* scale-factor font-size)
+                #:size font-size
                 #:face font-face
                 #:family 'modern))
   (define cgdb (compile-glyph-db gdb))
@@ -34,14 +32,24 @@
   (define font-height (glyph-height cgdb a-char))
   (define render (stage-render cgdb))
 
-  (struct viewer (w h sc man)
+  (vds cgdb the-font font-width font-height render))
+
+(define (start-viewer
+         #:opengl-hires? [opengl-hires #f]
+         #:font-sizes [font-sizes '(13.0)]
+         #:font-face [font-face #f]
+         #:color-scheme [color-scheme default-colors]
+         #:manager [the-man (start-manager)])
+
+  (struct viewer (font-idx vds w h sc man)
     #:methods gen:word
     [(define (word-fps w)
        0.0)
      (define (word-label s ft)
        "Rune")
      (define (word-output v)
-       (match-define (viewer w h sc man) v)
+       (match-define (viewer _ the-vds w h sc man) v)
+       (match-define (vds cgdb the-font font-width font-height render) the-vds)
        (define bg (colors-ref color-scheme BG))
        (define r
          (render
@@ -63,14 +71,12 @@
                         #:fgr (red fg) #:fgg (green fg) #:fgb (blue fg)
                         #:bgr (red bg) #:bgg (green bg) #:bgb (blue bg))])))))
        (λ (w h dc)
-         (printf "actual size ~v\n" (vector w h))
-         (printf "scaled size ~v\n" (vector (* scale-factor w) (* scale-factor h)))
-         (r (* scale-factor w) (* scale-factor h) dc)))
+         (r w h dc)))
      (define (word-evt v)
-       (match-define (viewer w h sc man) v)
+       (match-define (viewer _ _ _ _ _ man) v)
        (manager-evt man))
      (define (word-event v e)
-       (match-define (viewer w h sc man) v)
+       (match-define (viewer _ the-vds w h sc man) v)
        (match e
          [(or 'close
               (and (? key-event?)
@@ -78,38 +84,63 @@
           #f]
          [(? key-event?)
           (define rk (key-event->rune-key e))
-          (when rk
-            (manager-key-event! man rk))
-          v]
+          (match rk
+            ;; xxx customize keys
+            ['M-=
+             (change-font v +1)]
+            ['M--
+             (change-font v -1)]
+            [_
+             (when rk
+               (manager-key-event! man rk))
+             v])]
          [(evt:write! _ cmd)
           (screen-write! sc cmd)
           v]
-         [`(resize ,snw ,snh)
-          (printf "resize ~v\n" (cons snw snh))
-          (define nw (* scale-factor snw))
-          (define nh (* scale-factor snh))
-          (printf "scaled resize ~v\n" (cons nw nh))
+         [`(resize ,nw ,nh)
           (cond
             [(and (= w nw) (= h nh))
              v]
             [else
-             (define nrows (- (inexact->exact (floor (/ nh font-height))) 1))
-             (define ncols (inexact->exact (floor (/ nw font-width))))
-             (define nsc (make-screen #:rows nrows #:cols ncols))
-             (screen-copy! sc nsc)
-             (manager-resize! man nrows ncols)
-             (struct-copy viewer v
-                          [w nw] [h nh]
-                          [sc nsc])])]
+             (resize-viewer
+              (struct-copy viewer v
+                           [w nw] [h nh]))])]
          [_
           v]))])
+
+  (define (change-font v size-delta)
+    (initialize-vds
+     (struct-copy viewer v
+                  [font-idx
+                   (modulo (+ (viewer-font-idx v) size-delta)
+                           (length font-sizes))])))
+
+  (define (initialize-vds v)
+    (define font-size (list-ref font-sizes (viewer-font-idx v)))
+    (resize-viewer
+     (struct-copy viewer v
+                  [vds (make-viewer-drawing-state
+                        #:size font-size
+                        #:face font-face)])))
+
+  (define (resize-viewer v)
+    (match-define (viewer _ the-vds w h sc man) v)
+    (match-define (vds cgdb the-font font-width font-height render) the-vds)
+    (define nrows (inexact->exact (floor (/ h font-height))))
+    (define ncols (inexact->exact (floor (/ w font-width))))
+    (define nsc (make-screen #:rows nrows #:cols ncols))
+    (manager-resize! man nrows ncols)
+    (struct-copy viewer v [sc nsc]))
 
   (call-with-chaos
    (make-gui #:mode gui-mode
              #:opengl-hires? opengl-hires)
    (λ ()
      (fiat-lux
-      (viewer 0 0 (make-screen #:rows 0 #:cols 0)
-              the-man)))))
+      (initialize-vds
+       (viewer 0 #f
+               0 0
+               (make-screen #:rows 0 #:cols 0)
+               the-man))))))
 
 (provide start-viewer)
