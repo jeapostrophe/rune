@@ -38,7 +38,13 @@
          ["/rune"
           [(#f)
            (lambda (c)
-             (ws-send! c "console.log('Hey');"))]])))))
+             (let loop ()
+               (define msg (ws-recv c))
+               (printf "Got: ~v\n" msg)
+               (ws-send! c (format "console.log(~v)" msg))
+               (loop)))]])))))
 
   (thread-wait http-t)
   (thread-wait ws-t))
+
+;; // http://philipwalton.github.io/solved-by-flexbox/
