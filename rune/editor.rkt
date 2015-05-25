@@ -1,8 +1,7 @@
 #lang racket/base
 (require racket/match
-         hirune/util
-         hirune/common
-         rune/lib/buffer)
+         rune/events
+         rune/buffer)
 
 (define-match-expander bind
   (syntax-rules ()
@@ -20,29 +19,29 @@
 (define (editor-process s e)
   (match-define (editor mb mbc) s)
   (match e
-    [(event:hirune:key 'C-<left>)
+    [(event:rune:key 'C-<left>)
      (editor mb 0)]
-    [(event:hirune:key '<left>)
+    [(event:rune:key '<left>)
      (editor mb (max 0 (sub1 mbc)))]
-    [(event:hirune:key 'C-<right>)
+    [(event:rune:key 'C-<right>)
      (editor mb (buffer-row-cols mb 0))]
-    [(event:hirune:key '<right>)
+    [(event:rune:key '<right>)
      (editor mb (min (buffer-row-cols mb 0) (add1 mbc)))]
-    [(event:hirune:key (or '<backspace> 'S-<backspace>))
+    [(event:rune:key (or '<backspace> 'S-<backspace>))
      (cond
        [(> mbc 0)
         (define-values (_ mbp) (buffer-delete-previous mb 0 mbc))
         (editor mbp (sub1 mbc))]
        [else
         s])]
-    [(event:hirune:key '<delete>)
+    [(event:rune:key '<delete>)
      (cond
        [(< mbc (buffer-row-cols mb 0))
         (define-values (_ mbp) (buffer-delete-next mb 0 mbc))
         (editor mbp mbc)]
        [else
         s])]
-    [(event:hirune:key
+    [(event:rune:key
       (or (? char? c)
           (and (or 'S-<space> '<space>)
                (bind c #\space))))

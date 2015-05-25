@@ -1,12 +1,13 @@
 #lang racket/base
 (require rune/manager
-         rune/ui/web)
+         rune/ui/web
+         rune/buffer)
 
 (module+ main
   (define m
     (manager
      (λ (msg)
-       (displayln msg))
+       (writeln msg))
      never-evt))
   
   (start-rune-web m))

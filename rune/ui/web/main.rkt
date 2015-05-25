@@ -1,6 +1,7 @@
 #lang racket/base
 (require net/rfc6455
          racket/runtime-path
+         racket/match
          racket/contract/base
          racket/async-channel
          json
@@ -10,12 +11,29 @@
          (prefix-in seq: web-server/dispatchers/dispatch-sequencer)
          (prefix-in lift: web-server/dispatchers/dispatch-lift)
          (prefix-in files: web-server/dispatchers/dispatch-files)
-         rune/manager)
+         rune/manager
+         rune/events)
 
 (define-runtime-path here ".")
 
 (define HTTP-PORT 7332)
 (define WS-PORT (+ HTTP-PORT 1))
+
+(define (web->rune msg)
+  (match msg
+    [`("open!")
+     (event:rune:cmd `(open!))]
+    [`("key!" ,code ,alt? ,ctrl? ,meta? ,shift?)
+     (define kc
+       (match code
+         [(regexp #rx"^U\\+(....)$" (list _ num))
+          (define c (integer->char (string->number num 16)))
+          (if shift?
+              (char-upcase c)
+              (char-downcase c))]
+         [_
+          (string->symbol (string-downcase code))]))
+     (key-event->rune-key kc alt? ctrl? meta? shift?)]))
 
 (define (start-rune-web m)
   (define http-t
@@ -48,9 +66,12 @@
                (thread
                 (λ ()
                   (let loop ()
-                    (define msg (read-json (open-input-string (ws-recv c))))
-                    (async-channel-put from-web-ch msg)
-                    (loop)))))
+                    (define wc-msg (ws-recv c))
+                    (unless (eof-object? wc-msg)
+                      (define msg (read-json (open-input-string wc-msg)))
+                      (define e (web->rune msg))
+                      (async-channel-put from-web-ch e)
+                      (loop))))))
 
              (define writer-t
                (thread
@@ -61,7 +82,7 @@
                     (loop)))))
 
              (thread-wait reader-t)
-             (thread-wait writer-t)
+             (kill-thread writer-t)
 
              (ws-close! c))]])))))
 
@@ -75,7 +96,7 @@
     (handle-evt (manager-evt m)
                 (λ (e)
                   (async-channel-put to-web-ch e))))
-  
+
   (define manager-t
     (thread
      (λ ()
