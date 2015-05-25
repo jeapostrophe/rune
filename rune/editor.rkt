@@ -18,6 +18,7 @@
 
 (define (editor-process s e)
   (match-define (editor mb mbc) s)
+  ;; xxx customize keys
   (match e
     [(event:rune:key 'C-<left>)
      (editor mb 0)]
