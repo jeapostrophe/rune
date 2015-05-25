@@ -11,7 +11,7 @@
          (prefix-in seq: web-server/dispatchers/dispatch-sequencer)
          (prefix-in lift: web-server/dispatchers/dispatch-lift)
          (prefix-in files: web-server/dispatchers/dispatch-files)
-         rune/manager
+         rune/app
          rune/events)
 
 (define-runtime-path here ".")
@@ -33,7 +33,7 @@
               (char-downcase c))]
          [_
           (string->symbol (string-downcase code))]))
-     (key-event->rune-key kc alt? ctrl? meta? shift?)]))
+     (event:rune:key (key-event->rune-key kc alt? ctrl? meta? shift?))]))
 
 (define (start-rune-web m)
   (define http-t
@@ -90,10 +90,10 @@
   (define from-web-evt
     (handle-evt from-web-ch
                 (λ (e)
-                  (manager-send! m e))))
+                  (app-send! m e))))
   (define to-web-ch (make-async-channel))
   (define to-web-evt
-    (handle-evt (manager-evt m)
+    (handle-evt (app-evt m)
                 (λ (e)
                   (async-channel-put to-web-ch e))))
 
@@ -112,5 +112,5 @@
 (provide
  (contract-out
   [start-rune-web
-   (-> manager?
+   (-> app?
        void?)]))
