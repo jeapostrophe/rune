@@ -4,8 +4,9 @@
          racket/flonum
          racket/fixnum
          racket/match
-         gfx/color
-         mode-tau
+         mode-lambda
+         mode-lambda/backend/gl
+         mode-lambda/color
          rune/screen
          rune/colors
          rune/manager

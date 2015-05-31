@@ -1,6 +1,6 @@
 #lang racket/base
 (require racket/match
-         (prefix-in c: gfx/color))
+         (prefix-in c: mode-lambda/color))
 
 (define COLORS 16)
 
