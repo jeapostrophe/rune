@@ -1,6 +1,8 @@
 * New Idea
 ** vis
    https://github.com/martanne/vis
+** fzf
+   https://github.com/junegunn/fzf
 ** sharing opengl textures between contexts
    http://blog.gvnott.com/some-usefull-facts-about-multipul-opengl-contexts/
 ** spacemacs
