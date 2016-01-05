@@ -16,7 +16,8 @@
 
 (define-runtime-path here ".")
 
-(define HTTP-PORT 7332)
+;; XXX discover a good one
+(define HTTP-PORT 7333)
 (define WS-PORT (+ HTTP-PORT 1))
 
 (define (web->rune msg)

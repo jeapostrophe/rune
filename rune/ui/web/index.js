@@ -1,5 +1,6 @@
 window.onload = function() {
-    var exampleSocket = new WebSocket("ws://localhost:7333/rune");
+    // XXX set from Racket
+    var exampleSocket = new WebSocket("ws://localhost:7334/rune");
     window.onkeydown = function (e) {
         exampleSocket.send(
             JSON.stringify(
