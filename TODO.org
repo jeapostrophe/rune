@@ -1,6 +1,7 @@
 * New Idea
 ** vis
    https://github.com/martanne/vis
+** tickit --- http://www.leonerd.org.uk/code/libtickit/doc/tickit_window.7.html
 ** fzf
    https://github.com/junegunn/fzf
 ** sharing opengl textures between contexts
