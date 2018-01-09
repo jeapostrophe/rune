@@ -5,6 +5,8 @@
                      syntax/parse/lib/function-header)
          racket/generic
          racket/stxparam
+         racket/sandbox
+         racket/set
          lux
          struct-define
          raart)
@@ -19,11 +21,55 @@
           (raise-syntax-error (syntax-e target) "may not be set" stx #'x)]
          [x:id target])))))
 
+(begin-for-syntax
+  (define-splicing-syntax-class bindings-stx
+    (pattern (~seq [k:string ka:expr] ...))))
+(define-syntax (bindings stx)
+  (syntax-parse stx
+    [(_ ;; xxx context
+      [k:string ka:expr] ...)
+     (syntax/loc stx
+       (make-immutable-hash
+        (list (cons k 'ka)
+              ...)))]))
+(define (bindings-merge top bot)
+  (for/fold ([bs bot])
+            ([(k v) (in-hash top)])
+    (hash-set bs k v)))
+
+(define default-bindings-path
+  (build-path (find-system-path 'home-dir) ".rune.rkt"))
+(define (load-default-bindings)
+  (or
+   (and (file-exists? default-bindings-path)
+        (dynamic-require default-bindings-path 'bindings #f))
+   (hasheq)))
+
+(define rune-evaluator
+  (make-evaluator 'racket/base))
+
+(define should-eval-set
+  (seteq #\( #\' #\"))
+;; Xxx automatically parse numbers?
+(define (rune-eval s)
+  (if (and (not (zero? (string-length s)))
+           (set-member? should-eval-set (string-ref s 0)))
+    (rune-evaluator s)
+    s))
+
 (define-generics rune
   (rune-evt rune)
-  (rune-out rune *screen-cols *screen-rows)
+  (rune-out rune *screen-rows *screen-cols)
   (rune-del rune)
-  (rune-acts rune))
+  (rune-acts rune)
+  (rune-bindings rune))
+
+(define-syntax-rule (@ r m)
+  (hash-ref (rune-acts r) 'm #f))
+(define-syntax-rule (@? r m . args)
+  (let ([f (@ r m)])
+    (when f
+      (f . args))))
 
 (define-syntax new
   (λ (stx) (raise-syntax-error 'new "Illegal outside of define-rune" stx)))
@@ -63,24 +109,24 @@
               ...
               (~fail #:when (check-duplicate-identifier (syntax->list #'(meth ...)))
                      "actions must be unique"))
-        (~seq #:bindings ~!
-              ;; xxx context
-              [k:string ka:expr] ...))
+        (~seq #:bindings ~! bs:bindings-stx))
      #:with r (datum->syntax #'the-rune 'this)
+     #:with rune-action-table (datum->syntax #'the-rune 'rune-action-table)
      (syntax/loc stx
        (begin
-         ;; XXX bindings
-         (struct rep (rune-f ...)
+         (define default-bindings
+           (bindings . bs))
+         (struct rep (rune-action-table rune-f ...)
            #:mutable
            #:reflection-name 'the-rune
            #:methods gen:rune
            [(define (rune-evt r)
               (rep-define r)
               evt-body ...)
-            (define (rune-out r *screen-cols *screen-rows)
+            (define (rune-out r *screen-rows *screen-cols)
               (syntax-parameterize
-                  ([screen-cols (make-read-only-rename-transformer #'*screen-cols)]
-                   [screen-rows (make-read-only-rename-transformer #'*screen-rows)])
+                  ([screen-rows (make-read-only-rename-transformer #'*screen-rows)]
+                   [screen-cols (make-read-only-rename-transformer #'*screen-cols)])
                 (rep-define r)
                 out-body ...))
             (define (rune-del r)
@@ -89,22 +135,23 @@
               (void))
             (define (rune-acts r)
               (rep-define r)
-              (define meth
-                (λ meth-args
-                  meth-body ...))
-              ...
-              (make-immutable-hasheq
-               (list (cons 'meth meth) ...)))])
+              rune-action-table)
+            (define (rune-bindings r)
+              default-bindings)])
          (define-struct-define rep-define rep)
-         (define (init r)
-           (rep-define r)
-           init-body ...
-           (void))
          (define the-rune
            (λ new-args
              new-body ...
-             (define r (rep f-init ...))
-             (init r)
+             (define meth
+               (λ meth-args
+                 meth-body ...))
+             ...
+             (define r
+               (rep (make-immutable-hasheq
+                     (list (cons 'meth meth) ...))
+                    f-init ...))
+             (rep-define r)
+             init-body ...
              r))
          (rune-main the-rune)))]))
 
@@ -120,43 +167,51 @@
 (define (rune-main* program make-rune)
   (local-require racket/cmdline)
   (command-line
-   ;; XXX get program via an action
    #:program program
-   ;; XXX help
    #:args args
    (let ([rune-obj
-          ;; XXX eval args
-          (apply make-rune args)])
-     ;; XXX
-     (exit 1)
+          (apply make-rune (map rune-eval args))])
+     (define the-binds
+       (bindings-merge
+        (load-default-bindings)
+        (rune-bindings rune-obj)))
      (call-with-chaos
       (make-raart #:mouse? #t)
-      (λ () (fiat-lux (codex rune-obj))))
+      (λ () (fiat-lux (codex the-binds rune-obj 24 80))))
      (void))))
 
-;; XXX init del evt out act bindings
-(struct codex (rune)
+;; XXX act bindings
+(define-struct-define codex-define codex)
+(struct codex (binds r rows cols)
+  #:mutable
   #:methods gen:word
   [(define (word-fps w) 0.0)
    (define (word-label w ft)
-     ;; XXX or call an action
+     ;; XXX or call an action or look at output
      "Rune")
    (define (word-evt w)
-     ;; XXX look at evt
-     never-evt)
+     (codex-define w)
+     (rune-evt r))
    (define (word-event w e)
-     ;; XXX decode
+     (codex-define w)
      (match e
+       [(screen-size-report new-rows new-cols)
+        (set! rows new-rows)
+        (set! cols new-cols)
+        (@? r screen-resized rows cols)
+        w]
+       ;; XXX look at bindings
        [(== (key #\D (set 'control)))
         #f]
        [_
         w]))
    (define (word-output w)
-     ;; XXX
-     (blank))
+     (codex-define w)
+     (rune-out r rows cols))
    (define (word-return w)
-     ;; XXX
-     w)])
+     (codex-define w)
+     (rune-del r)
+     (void))])
 
 ;; Usage
 (require racket/match
@@ -207,8 +262,6 @@
   #:act
   ;; XXX immediate / normal mode action / only sometimes enabled/allowed?
   ;; XXX default key action?
-  ;; XXX screen resized
-  (act (screen-resized w h) (void))
   ;; XXX add documentation to actions
   (act (move-cursor dr dc)
     (set! row (clamp 0 (+ row dr) (gvector-count lines)))
@@ -222,9 +275,6 @@
   ["<down>" (down)]
   ["<left>" (left)]
   ["<right>" (right)])
-
-;; xxx something to connect to args, or assume all args are strings?
-;; that won't work with the obj-pager --- just parse and call eval?
 
 ;;; Old version
 
