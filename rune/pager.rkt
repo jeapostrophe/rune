@@ -299,3 +299,14 @@
   ["<down>" (down)]
   ["<left>" (left)]
   ["<right>" right])
+
+;; xxx make modal/vimlike with the ability to switch modes of
+;; keys/actions and has command bar
+
+;; xxx make terminal
+
+;; xxx make window manager
+
+;; xxx make detachable server
+
+;; xxx change raart to catch and pass hangups
