@@ -21,12 +21,30 @@
           (raise-syntax-error (syntax-e target) "may not be set" stx #'x)]
          [x:id target])))))
 
+;; Bindings
+;; #f --- Quit
+;; #t --- Pass key to key
+;; se --- evaluate se and call action
+
+(define (bindings-eval binds r e)
+  (match (hash-ref binds e #t)
+    [#f #f]
+    [#t
+     (@? r key e)
+     #t]
+    [(or (and (? symbol? action)
+              (app (λ (_) '()) args))
+         (cons (? symbol? action) args))
+     (define f (act-ref r action))
+     (when f (apply f (map rune-eval args)))
+     #t]))
+
 (begin-for-syntax
   (define-splicing-syntax-class bindings-stx
     (pattern (~seq [k:string ka:expr] ...))))
 (define-syntax (bindings stx)
   (syntax-parse stx
-    [(_ ;; xxx context
+    [(_ ;; xxx context or something?
       [k:string ka:expr] ...)
      (syntax/loc stx
        (make-immutable-hash
@@ -37,24 +55,25 @@
             ([(k v) (in-hash top)])
     (hash-set bs k v)))
 
-(define default-bindings-path
+(define user-bindings-path
   (build-path (find-system-path 'home-dir) ".rune.rkt"))
-(define (load-default-bindings)
+(define (load-user-bindings)
   (or
-   (and (file-exists? default-bindings-path)
-        (dynamic-require default-bindings-path 'bindings #f))
-   (hasheq)))
+   (and (file-exists? user-bindings-path)
+        (dynamic-require user-bindings-path 'bindings #f))
+   (hasheq
+    "C-D" #f)))
 
-(define rune-evaluator
+(define rune-eval
   (make-evaluator 'racket/base))
 
 (define should-eval-set
   (seteq #\( #\' #\"))
 ;; Xxx automatically parse numbers?
-(define (rune-eval s)
+(define (rune-arg-eval s)
   (if (and (not (zero? (string-length s)))
            (set-member? should-eval-set (string-ref s 0)))
-    (rune-evaluator s)
+    (rune-eval s)
     s))
 
 (define-generics rune
@@ -64,12 +83,14 @@
   (rune-acts rune)
   (rune-bindings rune))
 
+(define (act-ref r m-id)
+  (hash-ref (rune-acts r) m-id #f))
 (define-syntax-rule (@ r m)
-  (hash-ref (rune-acts r) 'm #f))
+  (act-ref r 'm))
 (define-syntax-rule (@? r m . args)
   (let ([f (@ r m)])
-    (when f
-      (f . args))))
+    (and f
+         (f . args))))
 
 (define-syntax new
   (λ (stx) (raise-syntax-error 'new "Illegal outside of define-rune" stx)))
@@ -170,25 +191,26 @@
    #:program program
    #:args args
    (let ([rune-obj
-          (apply make-rune (map rune-eval args))])
+          (apply make-rune (map rune-arg-eval args))])
      (define the-binds
        (bindings-merge
-        (load-default-bindings)
+        ;; XXX maybe pass 'program
+        (load-user-bindings)
         (rune-bindings rune-obj)))
      (call-with-chaos
       (make-raart #:mouse? #t)
       (λ () (fiat-lux (codex the-binds rune-obj 24 80))))
      (void))))
 
-;; XXX act bindings
 (define-struct-define codex-define codex)
 (struct codex (binds r rows cols)
   #:mutable
   #:methods gen:word
   [(define (word-fps w) 0.0)
    (define (word-label w ft)
-     ;; XXX or call an action or look at output
-     "Rune")
+     (codex-define w)
+     (or (@? r label)
+         "Rune"))
    (define (word-evt w)
      (codex-define w)
      (rune-evt r))
@@ -200,10 +222,14 @@
         (set! cols new-cols)
         (@? r screen-resized rows cols)
         w]
-       ;; XXX look at bindings
-       [(== (key #\D (set 'control)))
-        #f]
+       [(? any-mouse-event?)
+        (@? r mouse e)
+        w]
+       [(? string?)
+        (and (bindings-eval binds r e)
+             w)]
        [_
+        (@? r unbound e)
         w]))
    (define (word-output w)
      (codex-define w)
@@ -247,7 +273,6 @@
           (gvector-add! lines (text l))
           (set! max-col (max max-col (string-length l)))]))))
   #:out
-  ;; XXX should include label, mode, screen
   (crop col (add1 screen-cols) row (add1 screen-rows)
         (place-cursor-after
          (if (zero? (gvector-count lines))
@@ -260,8 +285,6 @@
   ;; them externally?) ... maybe communicate with parent? ... maybe
   ;; have an `internal` action that is called by evt, etc?
   #:act
-  ;; XXX immediate / normal mode action / only sometimes enabled/allowed?
-  ;; XXX default key action?
   ;; XXX add documentation to actions
   (act (move-cursor dr dc)
     (set! row (clamp 0 (+ row dr) (gvector-count lines)))
@@ -270,88 +293,9 @@
   (act  (down) (move-cursor +1  0))
   (act  (left) (move-cursor  0 -1))
   (act (right) (move-cursor  0 +1))
+  (act (label) (format "pager: ~a" src))
   #:bindings
   ["<up>" (up)]
   ["<down>" (down)]
   ["<left>" (left)]
-  ["<right>" (right)])
-
-;;; Old version
-
-(define (with-input-source src f)
-  ((match src
-     ['stdin call-with-closing-stdin]
-     [_ (λ (f) (call-with-input-file src (λ (ip) (f src ip))))])
-   f))
-(define (call-with-closing-stdin f)
-  (define cip (current-input-port))
-  (dynamic-wind void (λ () (f "stdin" cip)) (λ () (close-input-port cip))))
-(struct pager (src ip rows cols lines max-col row col)
-  #:methods gen:word
-  [(define (word-fps w) 0.0)
-   (define (word-label w ft)
-     (~a "rage: " (pager-src w)))
-   (define (word-evt w)
-     (define ip (pager-ip w))
-     (if (port-closed? ip)
-       never-evt
-       (handle-evt (read-line-evt ip 'linefeed)
-                   (λ (l)
-                     (when (eof-object? l)
-                       (close-input-port ip))
-                     l))))
-   (define (word-event w e)
-     (match e
-       [(== (key #\D (set 'control)))
-        #f]
-       [(? key?)
-        (define-values (dr dc)
-          (match (key-value e)
-            ['up    (values -1  0)]
-            ['down  (values +1  0)]
-            ['left  (values  0 -1)]
-            ['right (values  0 +1)]
-            [_      (values  0  0)]))
-        (struct-copy pager w
-                     [row (clamp 0 (+ (pager-row w) dr)
-                                 (gvector-count (pager-lines w)))]
-                     [col (clamp 0 (+ (pager-col w) dc) (pager-max-col w))])]
-       [(? string?)
-        (gvector-add! (pager-lines w) (text e))
-        (struct-copy pager w
-                     [max-col (max (pager-max-col w) (string-length e))])]
-       [(screen-size-report rows cols)
-        (struct-copy pager w
-                     [rows rows]
-                     [cols cols])]
-       [_
-        w]))
-   (define (word-output w)
-     (define ls (pager-lines w))
-     (define row (add1 (pager-row w)))
-     (define col (add1 (pager-col w)))
-     (crop (sub1 col) (add1 (pager-cols w)) (sub1 row) (add1 (pager-rows w))
-           (place-cursor-after
-            (if (zero? (gvector-count ls))
-              (blank)
-              (vappend* #:halign 'left
-                        (for/list ([e (in-gvector ls)])
-                          e)))
-            (sub1 row) (sub1 col))))])
-
-(define (page src ip)
-  (call-with-chaos
-   (make-raart)
-   (λ ()
-     (fiat-lux (pager src ip 24 80 (make-gvector) 0 0 0)))))
-
-#;(module+ main
-    (require racket/cmdline)
-    (define to-view
-      (command-line
-       #:program "rage"
-       #:usage-help "racket pager"
-       #:args (file)
-       file))
-    (void
-     (with-input-source to-view page)))
+  ["<right>" right])
