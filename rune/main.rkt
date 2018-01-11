@@ -31,6 +31,7 @@
  define-rune
 
  rune-main
+ rune-run
 
  codex?)
 
@@ -112,8 +113,7 @@
   (act-ref r 'm))
 (define-syntax-rule (@? r m . args)
   (let ([f (@ r m)])
-    (and f
-         (f . args))))
+    (and f (f . args))))
 
 (define-syntax new
   (λ (stx) (raise-syntax-error 'new "Illegal outside of define-rune" stx)))
@@ -207,6 +207,18 @@
            (rune-main* (symbol->string 'the-rune) the-rune))
          (module+ rune
            (provide (rename-out [the-rune rune])))))]))
+
+(define (rune-run rune-obj)
+  (define the-binds
+    (bindings-merge
+     ;; XXX maybe pass 'program
+     (load-user-bindings)
+     (rune-bindings rune-obj)))
+  (call-with-chaos
+   (make-raart #:mouse? #t)
+   (λ () (fiat-lux (codex the-binds rune-obj 24 80))))
+  (void))
+
 (define (rune-main* program make-rune)
   (local-require racket/cmdline)
   (command-line
@@ -214,15 +226,7 @@
    #:args args
    (let ([rune-obj
           (apply make-rune (map rune-arg-eval args))])
-     (define the-binds
-       (bindings-merge
-        ;; XXX maybe pass 'program
-        (load-user-bindings)
-        (rune-bindings rune-obj)))
-     (call-with-chaos
-      (make-raart #:mouse? #t)
-      (λ () (fiat-lux (codex the-binds rune-obj 24 80))))
-     (void))))
+     (rune-run rune-obj))))
 
 (define-struct-define codex-define codex)
 (struct codex (binds r rows cols)

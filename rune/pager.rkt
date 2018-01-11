@@ -16,7 +16,7 @@
   (new
    [src the-src] [ip (open-input-file the-src)]
    [lines (make-gvector)] [max-col 0]
-   [row 0] [col 0] [last-e #f])
+   [row 0] [col 0])
   #:del
   (unless (or (not ip) (port-closed? ip))
     (close-input-port ip))
@@ -34,12 +34,12 @@
           (gvector-add! lines (text l))
           (set! max-col (max max-col (string-length l)))]))))
   #:out
-  ;; xxx centering mode
+  ;; xxx vertical centering mode
   (define max-lines (gvector-count lines))
   (define drawn-lines (min screen-rows max-lines))
   (set! col (clamp 0 col (max 0 (- max-col screen-cols))))
   (set! row (clamp 0 row (max 0 (- max-lines screen-rows))))
-  (crop col (add1 screen-cols) 0 (add1 screen-rows)
+  (crop col screen-cols 0 screen-rows
         (place-cursor-after
          (if (zero? max-lines)
            (blank)
@@ -59,8 +59,7 @@
   (act  (down) (move-cursor +1  0))
   (act  (left) (move-cursor  0 -1))
   (act (right) (move-cursor  0 +1))
-  (act (label) (format "pager: ~a    ~a" src last-e))
-  (act (key e) (set! last-e e))
+  (act (label) (format "pager: ~a" src))  
   #:bindings
   ["q" #f]
   ["<up>" up]
@@ -75,7 +74,40 @@
   [" " (move-cursor +24 0)]
   ["<page-up>" (move-cursor -24 0)])
 
-(rune-main file-pager)
+;; xxx argument for body's modes
+;; xxx expose body's action or catch those not seen?
+(define-rune modal
+  #:new (b)
+  (new [body b] [last-e #f])
+  #:del
+  (rune-del body)
+  #:evt
+  (rune-evt body)
+  #:out
+  (define body-rows (- screen-rows 2))
+  (vappend
+   #:reverse? #t
+   (crop 0 screen-cols
+         0 body-rows
+         (rune-out body body-rows screen-cols))
+   (vappend #:halign 'left
+            (style 'inverse
+              (text (~a "XXX Status: " last-e
+                        #:min-width screen-cols)))
+            (text "XXX Command")))
+  #:act
+  (act (key e) (set! last-e e))
+  (act (label) ((@ body label)))
+  #:bindings
+  ["q" #f])
+
+(module+ main
+  (require racket/cmdline)
+  (command-line #:program "file-pager"
+                #:args (file)
+                (rune-run (file-pager file))
+                #;
+                (rune-run (modal (file-pager file)))))
 
 ;; xxx make modal/vimlike with the ability to switch modes of
 ;; keys/actions and has command bar
@@ -86,4 +118,4 @@
 
 ;; xxx make detachable server
 
-;; xxx change raart to catch and pass hangups
+;; xxx change raart to catch and pass hangups (maybe?)
