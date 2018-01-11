@@ -10,6 +10,8 @@
          lux
          struct-define
          raart)
+
+;; XXX contracts
 (provide
  bindings-eval
  bindings
@@ -194,8 +196,7 @@
                     f-init ...))
              (rep-define r)
              init-body ...
-             r))
-         (rune-main the-rune)))]))
+             r))))]))
 
 (define-syntax (rune-main stx)
   (syntax-parse stx
