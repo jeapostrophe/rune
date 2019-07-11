@@ -11,6 +11,8 @@
          struct-define
          raart)
 
+;; XXX Think about syndicate?
+
 ;; XXX contracts
 (provide
  bindings-eval

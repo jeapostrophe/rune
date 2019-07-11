@@ -59,7 +59,7 @@
   (act  (down) (move-cursor +1  0))
   (act  (left) (move-cursor  0 -1))
   (act (right) (move-cursor  0 +1))
-  (act (label) (format "pager: ~a" src))  
+  (act (label) (format "pager: ~a" src))
   #:bindings
   ["q" #f]
   ["<up>" up]
@@ -76,6 +76,7 @@
 
 ;; xxx argument for body's modes
 ;; xxx expose body's action or catch those not seen?
+;; xxx having a hard time figuring out what the different between a rune and a word is
 (define-rune modal
   #:new (b)
   (new [body b] [last-e #f])
