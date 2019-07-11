@@ -8,4 +8,4 @@ main.icns: icons.rkt
 
 main: ~/Dev/scm/plt/racket/Rune.app
 	raco make main.rkt
-	open ~/Dev/scm/plt/racket/Rune.app
+	~/Dev/scm/plt/racket/Rune.app/Contents/MacOS/Rune
