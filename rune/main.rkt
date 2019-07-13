@@ -86,7 +86,7 @@
   (when
       ;; XXX generalize to bounding box test
       (and (<= 0 x wx)
-           (<= 0 y hx))    
+           (<= 0 y hx))
     (match d
       [(doc:empty _ _)
        (void)]
@@ -106,39 +106,37 @@
 
 ;; Browser
 (require lux lux/chaos/gui)
-(define-syntax-rule (fix id e) (letrec ([id e]) id))
 (define base-browse (word #:fps 0.0 #:label "Rune"))
 (define (browse-word d)
-  (fix
-   me
-   (word base-browse
-         #:event (λ (e)
-                   (cond
-                     [(eq? e 'close) #f]
-                     [else me]))
-         #:output (λ (w h dc)
-                    (send dc set-background c:bg)
-                    (send dc clear)
+  (word/rec
+   me base-browse
+   #:event (λ (e)
+             (cond
+               [(eq? e 'close) #f]
+               [else me]))
+   #:output (λ (w h dc)
+              (send dc set-background c:bg)
+              (send dc clear)
 
-                    (define the-font
-                      (make-font #:face default-font
-                                 #:size 13.0))
-                    (define-values (wpc hpc)
-                      (let ()
-                        (define-values
-                            (tw th _b _x)
-                          (send dc get-text-extent (make-string 80 #\0) the-font))
-                        (values (/ tw 80) th)))
+              (define the-font
+                (make-font #:face default-font
+                           #:size 13.0))
+              (define-values (wpc hpc)
+                (let ()
+                  (define-values
+                      (tw th _b _x)
+                    (send dc get-text-extent (make-string 80 #\0) the-font))
+                  (values (/ tw 80) th)))
 
-                    (send dc set-font the-font)
-                    (send dc set-text-foreground c:fg-mi)
-                    (send dc set-pen c:ui-mi 1 'solid)
-                    (send dc set-brush c:bg 'solid)
+              (send dc set-font the-font)
+              (send dc set-text-foreground c:fg-mi)
+              (send dc set-pen c:ui-mi 1 'solid)
+              (send dc set-brush c:bg 'solid)
 
-                    (define border-wx 5)
-                    (define border-hx 5)
+              (define border-wx 5)
+              (define border-hx 5)
 
-                    (draw-doc wpc hpc w h dc border-wx border-hx d)))))
+              (draw-doc wpc hpc w h dc border-wx border-hx d))))
 (define (browse d)
   (call-with-chaos
    (make-gui
@@ -157,7 +155,7 @@
                        (text "This is a test!")))
           (enumerate #:ordered? #t
                      (for/list ([i (in-range 5)])
-                          (text "This is a test!"))))
+                       (text "This is a test!"))))
     (hori x (vert x x)
           (vert x x)
           (vert x x)
